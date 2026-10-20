@@ -1,0 +1,25 @@
+python3 -m ruff check --fix --config backend/pyproject.toml backend/src backend/tests scripts
+All checks passed!
+python3 -m ruff format --config backend/pyproject.toml backend/src backend/tests scripts
+1 file reformatted, 39 files left unchanged
+python3 scripts/generate_contracts.py
+python3 -m ruff check --config backend/pyproject.toml backend/src backend/tests scripts
+All checks passed!
+python3 -m ruff format --check --config backend/pyproject.toml backend/src backend/tests scripts
+40 files already formatted
+python3 -m mypy --config-file backend/pyproject.toml backend/src
+Success: no issues found in 31 source files
+node node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json
+node node_modules/typescript/bin/tsc --noEmit -p backend/analyzer-ts/tsconfig.json
+python3 -m pytest -c backend/pyproject.toml backend/tests/unit -q
+.....................                                                    [100%]
+=============================== warnings summary ===============================
+../../../opt/homebrew/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /opt/homebrew/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+21 passed, 1 warning in 0.18s
+python3 -m pytest -c backend/pyproject.toml backend/tests/integration -q
+....                                                                     [100%]
+4 passed in 1.83s

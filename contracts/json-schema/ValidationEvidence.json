@@ -1,0 +1,149 @@
+{
+  "$defs": {
+    "Check": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "id": {
+          "maxLength": 80,
+          "title": "Id",
+          "type": "string"
+        },
+        "observations": {
+          "additionalProperties": true,
+          "title": "Observations",
+          "type": "object"
+        },
+        "outcome": {
+          "$ref": "#/$defs/Outcome"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "outcome",
+        "reason"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "Outcome": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "ERROR",
+        "UNAVAILABLE",
+        "SKIPPED",
+        "NOT_APPLICABLE",
+        "FLAKY"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/Check"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "fingerprint": {
+      "title": "Fingerprint",
+      "type": "string"
+    },
+    "identities": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Identities",
+      "type": "object"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "provider_kind": {
+      "const": "fixture",
+      "default": "fixture",
+      "title": "Provider Kind",
+      "type": "string"
+    },
+    "publication": {
+      "default": "PR preview",
+      "enum": [
+        "PR preview",
+        "none"
+      ],
+      "title": "Publication",
+      "type": "string"
+    },
+    "repository": {
+      "default": "northstar-consumer",
+      "title": "Repository",
+      "type": "string"
+    },
+    "revision": {
+      "default": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "scenario": {
+      "title": "Scenario",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tenant": {
+      "default": "fictional-demo",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "ANALYSIS_ONLY",
+        "PATCH_PREPARED",
+        "LOCAL_CHECKS_PASSED",
+        "VERIFIED_FOR_DECLARED_SCOPE",
+        "NEEDS_CLARIFICATION",
+        "UNSUPPORTED",
+        "VALIDATION_FAILED"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    }
+  },
+  "required": [
+    "scenario",
+    "created_at",
+    "verdict",
+    "identities",
+    "checks",
+    "limitations",
+    "fingerprint"
+  ],
+  "title": "ValidationEvidence",
+  "type": "object"
+}

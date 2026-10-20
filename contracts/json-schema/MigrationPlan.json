@@ -1,0 +1,74 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "invariants": {
+      "default": [
+        "identity",
+        "meaning",
+        "null",
+        "missing",
+        "not_found",
+        "error",
+        "encoding",
+        "unrelated_fields"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Invariants",
+      "type": "array"
+    },
+    "mapping_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Mapping Hash",
+      "type": "string"
+    },
+    "overlap_reason": {
+      "default": "Old-version overlap is not required by the frozen fixture profile.",
+      "title": "Overlap Reason",
+      "type": "string"
+    },
+    "required_checks": {
+      "default": [
+        "BASELINE_OLD",
+        "REPRO_NEW",
+        "REPAIR_NEW",
+        "REGRESSION",
+        "STATIC",
+        "POLICY"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Required Checks",
+      "type": "array"
+    },
+    "rule": {
+      "enum": [
+        "ML-PATH-001",
+        "ML-FIELD-001",
+        "ML-QUERY-001"
+      ],
+      "title": "Rule",
+      "type": "string"
+    },
+    "scenario": {
+      "maxLength": 80,
+      "title": "Scenario",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "scenario",
+    "rule",
+    "mapping_hash"
+  ],
+  "title": "MigrationPlan",
+  "type": "object"
+}

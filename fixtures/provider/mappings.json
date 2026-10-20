@@ -1,0 +1,11 @@
+{
+  "schema_version": "1",
+  "classification": "fictional approved fixture evidence, not customer approval",
+  "approver": "fixture-author",
+  "version": "northstar-1",
+  "mappings": {
+    "path": {"rule":"ML-PATH-001","from":"/v1/customers/{id}","to":"/v2/customers/{id}","semantics":"GET retrieval, identity, error and missing behavior unchanged"},
+    "field": {"rule":"ML-FIELD-001","from":"/name","to":"/profile/displayName","semantics":"Display name, nullable/missing normalized to null; same units and meaning"},
+    "query": {"rule":"ML-QUERY-001","from":"pageSize","to":"limit","semantics":"Integer 1..3, default 2, same order and contents, URLSearchParams encoding"}
+  }
+}

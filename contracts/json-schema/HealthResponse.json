@@ -1,0 +1,25 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "mode": {
+      "const": "local-reference",
+      "default": "local-reference",
+      "title": "Mode",
+      "type": "string"
+    },
+    "service": {
+      "const": "migratelens-control",
+      "default": "migratelens-control",
+      "title": "Service",
+      "type": "string"
+    },
+    "status": {
+      "const": "ok",
+      "default": "ok",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "title": "HealthResponse",
+  "type": "object"
+}

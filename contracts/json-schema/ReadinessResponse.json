@@ -1,0 +1,19 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "reason": {
+      "const": "Local reference and pilot acceptance gates are incomplete.",
+      "default": "Local reference and pilot acceptance gates are incomplete.",
+      "title": "Reason",
+      "type": "string"
+    },
+    "status": {
+      "const": "not_ready",
+      "default": "not_ready",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "title": "ReadinessResponse",
+  "type": "object"
+}

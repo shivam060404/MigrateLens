@@ -1,0 +1,58 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "candidate_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Candidate Hash",
+      "type": "string"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 20,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "path": {
+      "maxLength": 200,
+      "title": "Path",
+      "type": "string"
+    },
+    "rationale": {
+      "maxLength": 2000,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Source Hash",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "PROPOSED",
+        "NEEDS_CLARIFICATION",
+        "UNSUPPORTED"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "path",
+    "source_hash",
+    "candidate_hash",
+    "evidence_refs",
+    "rationale"
+  ],
+  "title": "PatchProposal",
+  "type": "object"
+}

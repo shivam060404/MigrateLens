@@ -1,0 +1,6 @@
+packages:
+  - frontend
+  - backend/analyzer-ts
+minimumReleaseAge: 1440
+# Dependency installation is an explicit bootstrap step, never a test side effect.
+verifyDepsBeforeRun: error

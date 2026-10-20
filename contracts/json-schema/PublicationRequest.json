@@ -1,0 +1,51 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "approval_id": {
+      "maxLength": 80,
+      "title": "Approval Id",
+      "type": "string"
+    },
+    "base_sha": {
+      "pattern": "^[a-f0-9]{40}$",
+      "title": "Base Sha",
+      "type": "string"
+    },
+    "candidate_sha": {
+      "pattern": "^[a-f0-9]{40}$",
+      "title": "Candidate Sha",
+      "type": "string"
+    },
+    "case_id": {
+      "maxLength": 80,
+      "title": "Case Id",
+      "type": "string"
+    },
+    "expected_revision": {
+      "minimum": 1,
+      "title": "Expected Revision",
+      "type": "integer"
+    },
+    "fingerprint": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Fingerprint",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1",
+      "default": "1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "case_id",
+    "expected_revision",
+    "fingerprint",
+    "base_sha",
+    "candidate_sha",
+    "approval_id"
+  ],
+  "title": "PublicationRequest",
+  "type": "object"
+}

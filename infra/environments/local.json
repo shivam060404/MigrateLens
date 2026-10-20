@@ -1,0 +1,13 @@
+{
+  "schema_version": "1",
+  "environment": "development",
+  "classification": "fictional fixtures only",
+  "deployment_status": "not_deployed",
+  "execution_adapter": "fixture-host-1",
+  "customer_execution_enabled": false,
+  "publication_enabled": false,
+  "production_startup_enabled": false,
+  "required_services": ["postgresql", "temporal", "s3-compatible-object-store"],
+  "service_verification": "not_run",
+  "remaining_gates": ["locked fresh bootstrap", "real HTTP fixture acceptance", "durable tenant-aware control plane", "verified isolated pilot runner"]
+}
