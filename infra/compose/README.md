@@ -1,7 +1,5 @@
-# Local Compose gate
+# Optional local Compose gate
 
-Full Compose implementation is pending verified image selection and service integration. Docker CLI presence alone is not evidence that the stack runs.
+Compose remains unimplemented and unverified. A future enterprise topology should run the control API, frontend, PostgreSQL and evidence storage with real migrations, readiness, retention and recovery. A durable outbox worker can follow after the live database gate. Temporal is not an OSS or V1 prerequisite.
 
-Required topology: frontend → control API; control/worker → PostgreSQL, Temporal, object storage; isolated execution without control/publisher credentials. Expose development ports only on loopback. Keep persistent volumes on ordinary shutdown.
-
-Acceptance: fresh startup, health/readiness, migration from empty database, seeded fictional cases, worker restart/recovery, cancellation, artifact authorization and clean shutdown. None of these Compose checks has run yet.
+The customer CI proof path is separate and runs without this stack. Do not report in-process API or mock proof checks as Compose acceptance.

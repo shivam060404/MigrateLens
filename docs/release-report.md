@@ -1,28 +1,17 @@
-# Release evidence — modular foundation
+# Release report
 
-Date: 2026-10-20. Source state: uncommitted; repository Git initialization was denied. Environment: macOS, Python 3.14.6, Node 22.23.1, pnpm 11.11.0. Tests used installed dependencies; no clean install claim.
+Updated 2026-10-27. **Not ready for a public or enterprise release.**
 
-**Local reference incomplete. Pilot not ready.** Root architecture and a tested subset of Phase 0/1 are implemented. No live services were silently replaced with mocks. No PR, deployment or cloud provisioning occurred.
+| Area | Recorded result | Limit |
+|---|---|---|
+| OSS fictional proof | Local build and 14 tests passed; path/field/query six-check packs passed; wrong patch rejected | Unsigned, fixture-only, local execution |
+| Registered repository input | Bounded scan, one-line endpoint proposal, six-check local path proof and blocked draft preview pass tests | Self-declared vectors; no authenticated semantic approval, CI provenance or GitHub publication |
+| Abstention | Ambiguous and unchanged fixtures do not produce verified patches | General source/spec input unsupported |
+| Previous backend regression | Python lint/types, 94 unit, 35 security, 16 integration and builds passed in the prior local run | No current-tree provider HTTP rerun or live database gate |
+| CI | Read-only workflow configured | No remote run recorded |
+| Security | Local admission/policy tests exist; GitHub publication disabled | No customer CI provenance, secret canary gate or live identity/RLS acceptance |
+| Benchmark | Synthetic fictional fixtures only | Manual/agent comparisons and real partner cases not run |
 
-| Requirement | Status | Command / review evidence | Environment | Limitation | Accountable role |
-|---|---|---|---|---|---|
-| Backend/frontend/infra root ownership | Implemented, checked | Architecture tests + ADR 0002 | Local uncommitted | Infrastructure files currently define ownership/gates; deployment unimplemented | Engineering |
-| Application/domain dependency direction | PASS | `make test-unit` | Local | Static import check; not runtime security isolation | Engineering |
-| Strict settings / rejected production startup | PASS | Unit tests | Local | Live OIDC/pilot adapters unimplemented | Engineering/security |
-| Minimal API health | PASS | `make health`, unit tests | In-process ASGI | No listening HTTP server; readiness deliberately 503 | Engineering |
-| JSON Schema/OpenAPI generation | PASS | `make schemas` | Local | HTTP schema exposes implemented health routes only | Engineering |
-| Lint and formatting | PASS | `make lint` | Local | 40 Python source/test/tool files checked | Engineering |
-| Backend types | PASS | `make typecheck` | Local | mypy: 31 source files | Engineering |
-| Frontend/analyzer types | PASS | `make typecheck` | Local | Compiler checks, not browser/build verification | Engineering |
-| Unit boundaries / policy | 21 PASS | `make test-unit` | Local | One upstream TestClient/httpx deprecation warning retained | Engineering |
-| Recipes and ambiguity export | 4 PASS | `make test-integration` | Real Node/ts-morph/tsc | No provider-runtime claim | Engineering |
-| Endpoint/field/query HTTP validation | 3 FAIL / environment blocked | `make test-e2e` | Restricted local sandbox | Bind denied; checks UNAVAILABLE; no validated repair | Environment owner/engineering |
-| Wrong-patch behavioral rejection | 1 FAIL / environment blocked | `make test-e2e` | Restricted local sandbox | Provider preconditions unavailable; verifier not reached | Environment owner/engineering |
-| Fresh locked bootstrap | NOT VERIFIED | uv resolution and pnpm install attempts failed | Network-restricted shell | Python installed closure; Node cache lock/native optional packages need audit | Engineering |
-| Next.js production build / browser E2E | NOT RUN | No evidence yet | Local | UI is a foundation connection shell | Engineering |
-| PostgreSQL / RLS / migrations | NOT IMPLEMENTED | `make migrate` fails explicitly | None | No durable tenant control plane | Engineering |
-| Temporal / S3 / OIDC / publisher | NOT IMPLEMENTED | Roadmap only | None | No recovery or live integration claims | Engineering |
-| Isolated customer runner | NOT IMPLEMENTED | Host fixture adapter only | Local | No sandbox security claim | Security/engineering |
-| Live GitHub / pilot provider / commercial benchmark | NOT RUN | Access/authorization absent | None | Synthetic fixture checks imply no customer correctness or savings | Pilot owner |
+The product phrase is **“Verified for Declared Scope”** only when exact contracts, consumer commit, patch, policy, tests, tool/runner identity and required executed checks are recorded in an approved environment. Current local fixture output establishes that phrase only for its fictional scope; it is not a customer or production claim.
 
-Executed output is retained in [modular checks](evidence/modular-checks.txt) and [HTTP gate summary](evidence/http-acceptance.txt). Evidence is historical: changes to code, tests, policy or source identities require affected checks to run again.
+Release blockers: clean install, license, general repository path, customer CI proof, authenticated GitHub draft publication, adversarial security review, pilot evidence and optional enterprise live gates. See [plan](implementation-plan.md), [progress](progress.md) and [blockers](blockers.md). No merge or deployment is enabled.

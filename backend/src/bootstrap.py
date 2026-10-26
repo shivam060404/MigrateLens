@@ -23,6 +23,22 @@ class FixtureContractDetector:
     detect = staticmethod(detect)
 
 
+def implementation_fingerprint(root: Path = ROOT) -> str:
+    """Bind named controller/adapter bytes and dependency/tool configuration to each run."""
+    paths = sorted(
+        set((root / "backend/src").rglob("*.py"))
+        | set((root / "backend/analyzer-ts").glob("*.mjs"))
+        | {
+            root / "backend/analyzer-ts/tsconfig.json",
+            root / "backend/analyzer-ts/package.json",
+            root / "backend/pyproject.toml",
+            root / "backend/requirements.lock",
+            root / "pnpm-lock.yaml",
+        }
+    )
+    return digest({str(path.relative_to(root)): digest(path.read_bytes()) for path in paths})
+
+
 def create_fixture_pipeline(
     scenario: str, output: Path | None = None, *, wrong_patch: bool = False
 ) -> FixturePipeline:
@@ -35,12 +51,16 @@ def create_fixture_pipeline(
     implementation = ROOT / "backend/src"
     inputs = FixtureInputs(
         source=read_reviewed(
-            "fixtures/consumers/northstar/src/integrations/customer/client.ts"
+            "fixtures/consumers/unsupported/dynamic.ts"
+            if scenario == "dynamic"
+            else "fixtures/consumers/northstar/src/integrations/customer/client.ts"
         ).decode(),
         mappings=json.loads(read_reviewed("fixtures/provider/mappings.json")),
         old_contract=parse_contract(json.dumps(old).encode()),
         new_contract=parse_contract(json.dumps(new).encode()),
         identities={
+            "implementation": implementation_fingerprint(),
+            "repair_profile": "deliberately-incorrect-tier" if wrong_patch else "deterministic",
             "test_suite": digest(
                 (implementation / "infrastructure/verification/fixture_verifier.py").read_bytes()
                 + (implementation / "domain/fixture_acceptance.py").read_bytes()
@@ -56,6 +76,8 @@ def create_fixture_pipeline(
             "assessment": digest((implementation / "domain/assessment.py").read_bytes()),
             "runner_implementation": digest(
                 (implementation / "infrastructure/execution/fixture_runner.py").read_bytes()
+                + (implementation / "infrastructure/execution/process.py").read_bytes()
+                + (implementation / "infrastructure/security/fixture_admission.py").read_bytes()
             ),
             "python": platform.python_version(),
             "runner": "fixture-host-1 (no image digest)",
@@ -85,3 +107,29 @@ def create_commands(output: Path):
     return FixtureCommands(
         lambda scenario, negative: create_fixture_pipeline(scenario, output, wrong_patch=negative)
     )
+
+
+def create_control_plane(settings: Settings):
+    """Bind trusted identity and PostgreSQL only for an explicitly enabled API."""
+    from sqlalchemy import create_engine
+    from src.application.control import ControlService
+    from src.infrastructure.identity.tokens import TokenVerifier
+    from src.infrastructure.persistence.database import Database
+    from src.infrastructure.persistence.repository import PostgresRepository
+    from src.infrastructure.storage.artifacts import LocalArtifactStore
+
+    if (
+        not settings.control_api_enabled
+        or not settings.identity_public_key_path
+        or not settings.database_url
+    ):
+        raise ValueError("Control API is disabled")
+    public_key = Path(settings.identity_public_key_path).read_bytes()
+    verifier = TokenVerifier(public_key, settings.identity_issuer, settings.identity_audience)
+    engine = create_engine(settings.database_url, pool_pre_ping=True, hide_parameters=True)
+    service = ControlService(
+        PostgresRepository(Database(engine)),
+        artifact_reader=LocalArtifactStore(ROOT / settings.artifact_root),
+        emergency_stop=settings.emergency_stop,
+    )
+    return service, verifier, engine

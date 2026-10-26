@@ -95,7 +95,7 @@ class Check(Strict):
 
 
 class ValidationEvidence(Strict):
-    schema_version: Literal["1"] = "1"
+    schema_version: Literal["1", "2"] = "2"
     tenant: str = Field(default="fictional-demo", pattern=r"^[a-z0-9][a-z0-9-]{0,79}$")
     repository: str = Field(default="northstar-consumer", pattern=r"^[a-z0-9][a-z0-9-]{0,79}$")
     scenario: str

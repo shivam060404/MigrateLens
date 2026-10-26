@@ -1,0 +1,28 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "declared_version": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Declared Version",
+      "type": "string"
+    },
+    "provider_id": {
+      "format": "uuid",
+      "title": "Provider Id",
+      "type": "string"
+    },
+    "repository_id": {
+      "format": "uuid",
+      "title": "Repository Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "repository_id",
+    "provider_id",
+    "declared_version"
+  ],
+  "title": "CreateBinding",
+  "type": "object"
+}

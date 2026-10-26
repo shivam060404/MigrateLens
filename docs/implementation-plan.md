@@ -1,51 +1,47 @@
-# Implementation plan
+# MigrateLens implementation plan
 
-Updated: 2026-10-20. Layout follows user direction: root `backend/`, `frontend/`, `infra/`. [ADR 0002](decisions/0002-modular-root-layout.md) supersedes the master specification's illustrative file locations, preserving its functional/security requirements.
+Updated 2026-10-27. [ADR 0004](decisions/0004-decentralized-gitops.md) defines V1: a standalone TypeScript OSS engine verifies migrations locally or in customer CI; an optional enterprise control plane handles metadata, policy, review and audit. The customer retains execution and secrets. A separate publisher may create authorized draft PRs only.
 
-## Phase 0 — Modular repository and execution contract (in progress)
+## Phases and gates
 
-- Implemented: backend layers/ports/composition root, separate frontend/analyzer workspaces, strict settings and insecure-production rejection, minimal health API, generated schemas, root developer commands, architecture tests, threat model and dependency pins.
-- Implemented: frontend connection shell only; dashboard expansion waits for fixture acceptance.
-- Remaining gate: clean bootstrap with verified lock/install behavior, complete dependency/license review and basic CI. Cached installed dependencies do not prove a fresh checkout bootstraps.
-- Infra ownership is established. Container/Compose integration remains unimplemented and must not be reported as running.
+| Phase | Deliverable and acceptance gate | State |
+|---|---|---|
+| -1 Architecture | Execution, permissions, evidence meaning, OSS and enterprise ownership recorded | Complete in ADR 0004 |
+| 0 Foundation | Frozen standalone Node workspace, lint/types/tests/build, offline demo, clean install and release policy | Local build/tests pass; clean install and license open |
+| 1 Deterministic engine | OpenAPI 3.0/3.1 diff, registered TypeScript usage, three bounded AST rules, approved mappings, abstention | Registered read-only scan and one path proposal work; general proof, broader usage and pinned oasdiff open |
+| 2 Proof pack | Baseline, incompatibility, repair, regression, static/policy checks; exact hashes; wrong patch rejection; customer CI | Fictional pack and one registered local path pack pass; authenticated customer CI and broader packs open |
+| 3 Model recipes | Replaceable structured proposal with schema, redaction and budget; verifier alone decides acceptance | Not started |
+| 4 GitHub loop | Composite Action and separate publisher; signed events, idempotency, stale-evidence rejection, authorized draft PR | Local blocked draft preview exists; GitHub Action/publisher not started |
+| 5 Enterprise | Optional FastAPI metadata/evidence API, PostgreSQL tenant isolation, auth, policy, approval and focused dashboard | Partial source; live database gate open |
+| 6 Security | Malicious spec/repo/model, secret canary, forged evidence, revocation and dependency gates | Local fixture tests only |
+| 7 Pilot/benchmark | Real permissioned cases, adjudicated A–D comparisons, effort/cost, separate from synthetic fixture | Synthetic fixture only |
+| 8 Release | License, clean install, remote CI, contribution guide, runbooks, operational gates and truthful report | Not ready |
 
-## Phase 1 — Golden fixture and immutable evidence (partial implementation)
+## Module contracts
 
-- Backend owns actual HTTP fictional providers, external behavior checks, deterministic pipeline and local evidence adapters.
-- `backend/analyzer-ts/` owns the three registered AST transformations.
-- `fixtures/` owns original TypeScript input and approved synthetic mappings.
-- `contracts/` owns generated plan/proposal/validation/publication schemas.
-- Executed: recipe/compiler adapter tests and ambiguity export.
-- Blocked gate: all real HTTP acceptance runs require loopback listening permission; current sandbox denies it. Incorrect-patch rejection is not established until its behavioral test actually executes.
+- `oss/` owns contract analysis, usage discovery, recipes, patching, proof generation and local evidence. It must run without `backend/`, `frontend/`, Python, cloud services, GitHub credentials or a model key.
+- `backend/` is the optional control API. Domain owns policy and authorization; application coordinates cases; infrastructure implements PostgreSQL, identity and artifact I/O. It does not run arbitrary customer source.
+- `frontend/` displays authenticated enterprise case and evidence state. It does not decide verification or authorization.
+- `infra/` owns optional enterprise deployment. PostgreSQL and object storage do not gate OSS. Start orchestration with a durable outbox; evaluate Temporal only if campaigns require it.
+- A future publisher receives narrowly scoped GitHub installation authority after independent proof and approval checks. The repair engine never holds write credentials.
 
-## Phase 2 — Tenant-aware persistence and orchestration
+## Immediate dependency order
 
-Implement backend PostgreSQL models/Alembic migrations, composite ownership/RLS, authorization, protected artifact adapters, Temporal workers/outbox, cancellation/reservations and audit. Infra supplies database, workflow and object-store topology. Test isolation/recovery before exposing customer routes.
+1. Verify a clean frozen Node installation and OSS job in remote CI. Select a public license before publishing. Current local compilation used installed exact pins.
+2. Expand the new admitted local repository/spec mapping path with a pinned, verified OpenAPI diff tool. Current read-only scan, path policy and patch proposal are intentionally analysis-only. Unknown syntax and semantic changes abstain.
+3. Expand ts-morph discovery for direct fetch, Axios, known SDK calls and bounded wrappers; record confirmed, candidate and unresolved usage. Keep three repair classes.
+4. Extend the registered local path proof beyond its two self-declared vectors, then execute packs in caller CI with read-only checkout, no production secrets, bounded time and secret scanning. Bind evidence to commit, contracts, patch, policy, tests, tool versions and authenticated runner identity before a verified claim.
+5. Add a GitHub Action and trusted draft publisher only after CI provenance, installation scope, stale approval and retry/idempotency checks pass.
+6. Resume optional enterprise database/RLS and evidence ingestion when the OSS loop is independently accepted; build focused review UX after real case data exists.
 
-## Phase 3 — Monitoring and usage analysis
+Each phase needs running code, meaningful tests, reproducible commands and an update in [progress](progress.md). Changed bound inputs invalidate affected evidence. Never infer CI authenticity from a local hash or uploaded manifest.
 
-Extend backend adapters with safe ingestion, pinned oasdiff, registered TypeScript usage patterns, mapping revisions and frozen dossiers. Retain explicit coverage gaps. The current structural fixture detector is not oasdiff.
+## Current reproduction
 
-## Phase 4 — Repair and verification
+```sh
+make oss-ci
+node oss/dist/cli.js plan --fixture field
+node oss/dist/cli.js prove --fixture path --negative-control --output .local/oss-proof
+```
 
-Harden policy/applied-tree checks, fresh verification, provenance, retries, budgets and model ports. Model-generated plans/patches never determine acceptance. Do not call a host subprocess an isolated customer runner.
-
-## Phase 5 — Isolated runner and trusted publisher
-
-Add one authorized pilot runner and a separate backend publisher entrypoint with no execution capability. Infrastructure enforces credentials/network separation. Verify a live test installation only after scope, credentials and publication authorization exist.
-
-## Phase 6 — Full product workflow
-
-Implement frontend feature modules for inbox, case workspace, verification, review, connections and operations against authenticated API contracts. Add accessible pending/error/stale states and real browser tests. No fabricated metrics.
-
-## Phase 7 — Benchmark and pilot
-
-Implement manifests/adjudication under `benchmarks/`. Report synthetic development, permissioned historical and live results separately. Historical comparisons/design partners remain unavailable prerequisites.
-
-## Phase 8 — Hardening and release
-
-Infra owns pinned images, environment manifests, observability, workload identity, backup/restore and controlled deployment. Backend owns retention/deletion and operational controls. Exercise runbooks and produce requirement-level release evidence. Named owners authorize pilot release; no automatic merge/deployment.
-
-## Next executable work
-
-Finish Phase 0 clean-bootstrap/lock/CI verification. In a permitted environment, run `make test-e2e` and inspect actual provider results, then close the Phase 1 gate. While that environment is unavailable, implement Phase 2 persistence contracts and tests without claiming database/recovery success.
+These checks apply only to fictional fixtures. `REPRO_NEW: PASS` means the old consumer failed as expected against the new mock. A wrong patch passes static/policy checks and fails repaired behavior. Customer CI execution, general repository support and authenticated publication are not claimed.

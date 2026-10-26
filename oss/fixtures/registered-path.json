@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "provider": "fictional-northstar",
+  "oldSpec": "path-old.json",
+  "newSpec": "path-new.json",
+  "sourceFiles": ["client.ts"],
+  "mappings": [
+    {
+      "ruleId": "ML-PATH-001",
+      "operation": "getCustomer",
+      "before": "/v1/customers/{id}",
+      "after": "/v2/customers/{id}",
+      "evidenceRef": "fictional-mapping-v1",
+      "revision": "1"
+    }
+  ]
+}

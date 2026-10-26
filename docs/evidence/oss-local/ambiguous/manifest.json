@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "oss-1",
+  "classification": "fictional development fixture; unsigned local or CI evidence",
+  "scenario": "ambiguous",
+  "verdict": "NEEDS_CLARIFICATION",
+  "identities": {
+    "source": "42da31964e1bb8050ed8022ad4c65129f798c4c8d027b928f234f69d3a560201",
+    "candidate": "42da31964e1bb8050ed8022ad4c65129f798c4c8d027b928f234f69d3a560201",
+    "patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "old_contract": "8127c6594c09d22ab13a7f53c336b185b3e73656158d635092861825b72f6a17",
+    "new_contract": "3f40e83b6cc468a0282f8983f1a200275656b6e449f985d3ccff0243c601ba18",
+    "test_suite": "ef389f5bc8823900ec17624337616da03193072e2ab16338876f8ba1da8de5dc",
+    "recipe": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "findings": "7d0c031df348da29823243fc3ba1c45b364eefdc0669e4b39f2bbdf338385285",
+    "policy": "0efac20aca85207e99f5ed038fef46c32579fd3d63b0346941172a04d81c8ab8",
+    "implementation": "bfe2b0ccdda0aaa6a0bc62e7ba3462f4c693cac91a5f02bc3615a09c9f795230",
+    "runner": "node:v22.23.1;typescript:5.9.3;ts-morph:26.0.0;caller-local-or-ci-unattested",
+    "source_path": "fictional:northstar/client.ts",
+    "checkout_commit": "b87931878b67e8ef933517c7ba73127fd8a4d495",
+    "candidate_tree": "e15fb427e2a78b886546b8ae63aa6294ef91ddda96a09106fcb8aaf88626e7b4",
+    "scenario": "b67547a0e11ceffb9a34682e6b81aee637e5b65ed830eb5c154bb9e707e382ff"
+  },
+  "checks": [],
+  "limitations": [
+    "Fictional registered fixture only; no general repository coverage claim.",
+    "Mock checks execute in the caller environment and are not a security sandbox.",
+    "Unsigned local manifest is not authenticated CI provenance or publication approval.",
+    "Structural OpenAPI subset only; pinned oasdiff integration remains pending."
+  ],
+  "fingerprint": "a6aa44bd8cc0fc3b1ad7df32dea65c6ed88a013365638ac04963993cc3748a1b"
+}

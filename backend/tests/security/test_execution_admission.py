@@ -118,14 +118,19 @@ def test_cancellation_stops_running_command(tmp_path):
 
 
 def test_customer_artifact_and_symlink_destination_denied(tmp_path):
-    evidence = run_fixture("ambiguous")
+    evidence = run_fixture("ambiguous", tmp_path / "original")
+    dossier = json.loads(
+        (
+            tmp_path / "original" / evidence.tenant / evidence.fingerprint / "dossier.json"
+        ).read_text()
+    )
     with pytest.raises(ExecutionDenied):
         export(tmp_path, evidence.model_copy(update={"tenant": "other-tenant"}), {}, "")
     outside = tmp_path / "outside"
     outside.mkdir()
     (tmp_path / "fictional-demo").symlink_to(outside, target_is_directory=True)
     with pytest.raises(ExecutionDenied, match="Symlink"):
-        export(tmp_path, evidence, {}, "")
+        export(tmp_path, evidence, dossier, "")
     assert not list(outside.iterdir())
 
 

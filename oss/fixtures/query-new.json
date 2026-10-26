@@ -1,0 +1,92 @@
+{
+  "info": {
+    "title": "Fictional Northstar",
+    "version": "query-new-1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/customers": {
+      "get": {
+        "operationId": "listCustomers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 2,
+              "maximum": 3,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ordered customers"
+          },
+          "400": {
+            "description": "Invalid parameter"
+          }
+        }
+      }
+    },
+    "/v1/customers/{id}": {
+      "get": {
+        "operationId": "getCustomer",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "tier": {
+                      "type": "string"
+                    },
+                    "unrelated": {
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Customer"
+          },
+          "404": {
+            "description": "Missing"
+          },
+          "503": {
+            "description": "Unavailable"
+          }
+        }
+      }
+    }
+  }
+}

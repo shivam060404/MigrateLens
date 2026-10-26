@@ -1,0 +1,33 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "base_sha": {
+      "pattern": "^[a-f0-9]{40}$",
+      "title": "Base Sha",
+      "type": "string"
+    },
+    "binding_id": {
+      "format": "uuid",
+      "title": "Binding Id",
+      "type": "string"
+    },
+    "new_contract_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "New Contract Hash",
+      "type": "string"
+    },
+    "old_contract_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Old Contract Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "binding_id",
+    "base_sha",
+    "old_contract_hash",
+    "new_contract_hash"
+  ],
+  "title": "CreateCase",
+  "type": "object"
+}

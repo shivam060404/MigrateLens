@@ -15,6 +15,7 @@ from src.domain.models import (
     Check,
     MigrationPlan,
     Outcome,
+    PatchProposal,
     Policy,
     ValidationEvidence,
     digest,
@@ -77,6 +78,9 @@ class FixturePipeline:
             **self.inputs.identities,
             "source": digest(base.encode()),
             "policy": digest(policy.model_dump()),
+            "mapping": digest(self.inputs.mappings),
+            "old_contract": digest(self.inputs.old_contract),
+            "new_contract": digest(self.inputs.new_contract),
         }
         checks: list[Check] = []
         patch = ""
@@ -88,10 +92,12 @@ class FixturePipeline:
         if scenario not in SUPPORTED:
             result, reason = ABSTENTIONS[scenario]
             dossier["reason"] = reason
-            if scenario == "unchanged":
-                dossier["diff"] = self.detector.detect(
-                    self.inputs.old_contract, self.inputs.new_contract
-                )
+            dossier["assessment_mode"] = (
+                "Registered exclusion fixture; no consumer impact or runtime breakage claimed."
+            )
+            dossier["diff"] = self.detector.detect(
+                self.inputs.old_contract, self.inputs.new_contract
+            )
         else:
             mapping = self.inputs.mappings["mappings"][scenario]
             plan = MigrationPlan(
@@ -147,6 +153,16 @@ class FixturePipeline:
                 identities.update(
                     {"candidate": digest(candidate.encode()), "patch": digest(patch.encode())}
                 )
+                proposal = PatchProposal(
+                    status="PROPOSED",
+                    path=policy.allowed_path,
+                    source_hash=identities["source"],
+                    candidate_hash=identities["candidate"],
+                    evidence_refs=(identities["mapping"], identities["plan"]),
+                    rationale="Deterministic recipe for the explicitly approved fictional mapping.",
+                )
+                dossier["proposal"] = proposal.model_dump(mode="json")
+                identities["proposal"] = digest(dossier["proposal"])
                 checks.append(check_patch(base, candidate, policy.allowed_path, policy))
                 if checks[-1].outcome == Outcome.PASS:
                     checks.append(self.verifier.behavior(candidate, scenario, "new", "REPAIR_NEW"))
@@ -158,8 +174,10 @@ class FixturePipeline:
                     )
                 )
                 result = verdict(checks, plan.required_checks)
+        identities["patch"] = digest(patch.encode())
+        identities["dossier"] = digest(dossier)
         metadata = {
-            "schema_version": "1",
+            "schema_version": "2",
             "tenant": "fictional-demo",
             "repository": "northstar-consumer",
             "scenario": scenario,

@@ -4,3 +4,20 @@ export interface HealthResponse {
   service: "migratelens-control";
   mode: "local-reference";
 }
+
+export interface CreateBinding {
+  repository_id: string;
+  provider_id: string;
+  declared_version: string;
+}
+
+export interface CreateCase {
+  binding_id: string;
+  base_sha: string;
+  old_contract_hash: string;
+  new_contract_hash: string;
+}
+
+export interface CancelCase {
+  expected_version: number;
+}

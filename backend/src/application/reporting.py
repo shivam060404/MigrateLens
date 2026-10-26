@@ -7,8 +7,14 @@ from src.domain.models import ValidationEvidence, digest
 
 def render_bundle(evidence: ValidationEvidence, dossier: dict, patch: str) -> dict[str, bytes]:
     validate_manifest(evidence.model_dump(mode="json"))
-    if patch and evidence.identities.get("patch") != digest(patch.encode()):
+    if evidence.schema_version != "2":
+        raise ValueError("Historical version 1 evidence is read-only; rerun before exporting")
+    if evidence.identities.get("patch") != digest(patch.encode()):
         raise ValueError("Export patch does not match tested patch identity")
+    if evidence.identities.get("dossier") != digest(dossier):
+        raise ValueError("Export dossier does not match frozen dossier identity")
+    if evidence.publication != ("PR preview" if patch else "none"):
+        raise ValueError("Publication preview does not match patch availability")
     rows = "\n".join(
         f"| {check.id} | {check.outcome} | {check.reason} |" for check in evidence.checks
     )

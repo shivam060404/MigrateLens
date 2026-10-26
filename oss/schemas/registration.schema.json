@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:migratelens:registration:1",
+  "title": "MigrateLens local registration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "provider", "oldSpec", "newSpec", "sourceFiles", "mappings"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "provider": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "oldSpec": { "$ref": "#/$defs/path" },
+    "newSpec": { "$ref": "#/$defs/path" },
+    "sourceFiles": {
+      "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/path" }
+    },
+    "mappings": {
+      "type": "array", "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["ruleId", "operation", "before", "after", "evidenceRef", "revision"],
+        "properties": {
+          "ruleId": { "$ref": "#/$defs/text" },
+          "operation": { "$ref": "#/$defs/text" },
+          "before": { "$ref": "#/$defs/text" },
+          "after": { "$ref": "#/$defs/text" },
+          "evidenceRef": { "$ref": "#/$defs/text" },
+          "revision": { "$ref": "#/$defs/text" }
+        }
+      }
+    },
+    "proof": {
+      "type": "object", "additionalProperties": false,
+      "required": ["exportName", "cases"],
+      "properties": {
+        "exportName": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$" },
+        "cases": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["args", "pathParams", "response", "expected"],
+            "properties": {
+              "args": { "type": "array", "minItems": 1, "maxItems": 8 },
+              "pathParams": { "type": "object", "additionalProperties": { "type": "string" } },
+              "response": {},
+              "expected": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "path": { "type": "string", "minLength": 1, "maxLength": 256 }
+  }
+}

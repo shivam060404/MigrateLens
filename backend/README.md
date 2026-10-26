@@ -1,20 +1,7 @@
-# Backend
+# Optional enterprise control API and historical fixture
 
-Python code lives under `src/`; the Node analyzer is a separate workspace in `analyzer-ts/`. The layer rules and process boundaries are documented in [architecture](../docs/architecture.md).
+The FastAPI source uses direct `src/{api,application,domain,infrastructure,config,cli}` modules and `bootstrap.py` composition. The control API is disabled by default; it cannot execute customer repositories. See [architecture](../docs/architecture.md).
 
-Run from the repository root:
+From the root, `make health` checks in-process ASGI, `make test-unit test-security test-integration` runs local checks, and `make test-e2e` requires loopback access for the fictional HTTP provider. The retained Python fixture CLI is for historical regression only; the V1 migration CLI is in `oss/`.
 
-```sh
-make health
-make dev-backend
-make test-unit
-make test-integration
-make test-e2e
-PYTHONPATH=backend python3 -m src.cli.main scan --scenario path
-PYTHONPATH=backend python3 -m src.cli.main analyze --scenario field
-PYTHONPATH=backend python3 -m src.cli.main repair --scenario query
-```
-
-`make health` checks the ASGI app in-process. E2E requires permission to listen on loopback and execute Node. Failed/unavailable provider checks never validate a repair. `/api/v1/health/ready` deliberately returns 503 while release gates are incomplete.
-
-Future persistence adapters, Alembic migrations, Temporal workers and the publisher belong here. They are not yet implemented. The local runner is not safe for customer repositories.
+For a local development identity, `make PYTHON=python3 identity-init` creates ignored keys and `make PYTHON=python3 identity-token SUBJECT=alice` issues a short-lived token. Enable metadata routes only with a migrated disposable PostgreSQL database, unprivileged runtime role, `ML_AUTH_MODE=local_token`, `ML_CONTROL_API_ENABLED=true`, `ML_IDENTITY_PUBLIC_KEY_PATH=.local/identity/public.pem` and `ML_DATABASE_URL` outside source control. `make test-database` is the strict live isolation gate. It has not passed in this environment; local tokens are not production OIDC.

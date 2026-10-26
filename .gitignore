@@ -6,8 +6,13 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .env
+.env.*
+!.env.example
 .local/
 artifacts/
 *.tsbuildinfo
 .DS_Store
 .pnpm-store/
+backend/build/
+oss/dist/
+backend/*.egg-info/

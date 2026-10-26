@@ -35,3 +35,30 @@ def test_ambiguous_mapping_exports_no_patch_and_valid_fingerprint(tmp_path):
     manifest = json.loads((folder / "manifest.json").read_text())
     fingerprint = manifest.pop("fingerprint")
     assert digest(manifest) == fingerprint
+
+
+@pytest.mark.parametrize(
+    "scenario,expected",
+    [
+        ("amount-unit", "UNSUPPORTED"),
+        ("pagination", "UNSUPPORTED"),
+        ("required-field", "NEEDS_CLARIFICATION"),
+        ("unchanged", "ANALYSIS_ONLY"),
+        ("dynamic", "UNSUPPORTED"),
+    ],
+)
+def test_registered_abstentions_are_versioned_and_export_no_patch(tmp_path, scenario, expected):
+    evidence = run_fixture(scenario, tmp_path)
+    assert evidence.verdict == expected
+    assert evidence.schema_version == "2"
+    folder = tmp_path / evidence.tenant / evidence.fingerprint
+    assert (folder / "repair.patch").read_bytes() == b""
+    assert evidence.identities["dossier"] == digest(
+        json.loads((folder / "dossier.json").read_text())
+    )
+    assert evidence.publication == "none"
+    dossier = json.loads((folder / "dossier.json").read_text())
+    if scenario in {"amount-unit", "pagination", "required-field"}:
+        assert dossier["diff"]["findings"], "Exclusion must have a concrete contract fixture"
+    elif scenario == "unchanged":
+        assert dossier["diff"]["findings"] == []

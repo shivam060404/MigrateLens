@@ -56,7 +56,28 @@ def fixture_contract(scenario: str, version: str):
             "type": "object",
             "properties": {"displayName": {"type": ["string", "null"]}},
         }
+    if scenario == "ambiguous":
+        fields.pop("name")
+        fields["nickname" if version == "new" else "legalName"] = {"type": "string"}
+    if scenario == "amount-unit":
+        fields["balance"] = {
+            "type": "integer",
+            "x-fixture-unit": "major" if version == "new" else "minor",
+        }
+    required = ["id"]
+    if scenario == "required-field" and version == "new":
+        fields["currency"] = {"type": "string"}
+        required.append("currency")
     query = "limit" if scenario == "query" and version == "new" else "pageSize"
+    if scenario == "pagination":
+        query = "cursor" if version == "new" else "offset"
+    parameter_schema = (
+        {"type": "string"}
+        if scenario == "pagination" and version == "new"
+        else {"type": "integer", "minimum": 0, "default": 0}
+        if scenario == "pagination"
+        else {"type": "integer", "minimum": 1, "maximum": 3, "default": 2}
+    )
     return {
         "openapi": "3.1.0",
         "info": {"title": "Fictional Northstar", "version": f"{scenario}-{version}-1"},
@@ -72,7 +93,11 @@ def fixture_contract(scenario: str, version: str):
                             "description": "Customer",
                             "content": {
                                 "application/json": {
-                                    "schema": {"type": "object", "properties": fields}
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": fields,
+                                        "required": required,
+                                    }
                                 }
                             },
                         },
@@ -88,7 +113,7 @@ def fixture_contract(scenario: str, version: str):
                         {
                             "name": query,
                             "in": "query",
-                            "schema": {"type": "integer", "minimum": 1, "maximum": 3, "default": 2},
+                            "schema": parameter_schema,
                         }
                     ],
                     "responses": {

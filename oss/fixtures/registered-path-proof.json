@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "provider": "fictional-northstar",
+  "oldSpec": "path-old.json",
+  "newSpec": "path-new.json",
+  "sourceFiles": ["client.ts"],
+  "mappings": [
+    {
+      "ruleId": "ML-PATH-001",
+      "operation": "getCustomer",
+      "before": "/v1/customers/{id}",
+      "after": "/v2/customers/{id}",
+      "evidenceRef": "fictional-mapping-v1",
+      "revision": "1"
+    }
+  ],
+  "proof": {
+    "exportName": "getCustomer",
+    "cases": [
+      {
+        "args": ["http://fixture.invalid", "ada"],
+        "pathParams": {"id": "ada"},
+        "response": {"id": "ada", "name": "Ada Lovelace", "tier": "standard", "unrelated": {"name": "unrelated-company"}},
+        "expected": {"id": "ada", "name": "Ada Lovelace", "tier": "standard", "unrelatedName": "unrelated-company"}
+      },
+      {
+        "args": ["http://fixture.invalid", "bob"],
+        "pathParams": {"id": "bob"},
+        "response": {"id": "bob", "name": "Bob Stone", "tier": "premium", "unrelated": {"name": "other-company"}},
+        "expected": {"id": "bob", "name": "Bob Stone", "tier": "premium", "unrelatedName": "other-company"}
+      }
+    ]
+  }
+}

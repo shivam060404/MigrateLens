@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "oss-1",
+  "classification": "fictional development fixture; unsigned local or CI evidence",
+  "scenario": "path",
+  "verdict": "VALIDATION_FAILED",
+  "identities": {
+    "source": "42da31964e1bb8050ed8022ad4c65129f798c4c8d027b928f234f69d3a560201",
+    "candidate": "8b576efb77aa633f3671df05c05aeb708dedddb89777b907d671ef9ded7422c8",
+    "patch": "b9e6b6ea81c81885bb2c503156b79eac4dd3aace2b183bd7f2e89bbcbf3f151c",
+    "old_contract": "e0e0c939f4a8416ee89fa01c00be3fe2e65c4ad936f00e9d2ce6d5cdb96e2f5c",
+    "new_contract": "aa0bb9f085689fbe7d53872b1fed7eeffa4b5c62b425bdaf460aa9ee121e6a96",
+    "test_suite": "ef389f5bc8823900ec17624337616da03193072e2ab16338876f8ba1da8de5dc",
+    "recipe": "ae7f0e24ddc61536ef21ee9ab2c155398f49e7b763f3d0e8c5203125bbc4866b",
+    "findings": "112de5a860985041d85f6222d9d4a8f8e118566abd1b4d3931e02168f64cedb8",
+    "policy": "0efac20aca85207e99f5ed038fef46c32579fd3d63b0346941172a04d81c8ab8",
+    "implementation": "bfe2b0ccdda0aaa6a0bc62e7ba3462f4c693cac91a5f02bc3615a09c9f795230",
+    "runner": "node:v22.23.1;typescript:5.9.3;ts-morph:26.0.0;caller-local-or-ci-unattested",
+    "source_path": "fictional:northstar/client.ts",
+    "checkout_commit": "b87931878b67e8ef933517c7ba73127fd8a4d495",
+    "candidate_tree": "9fe068f5e4314db3b36f748b9d0d89cbb9ae6cb5514c0a75f410753cf2957d89",
+    "scenario": "5f82df744afac3c23a28c41c0828f29d51dcb75f75d6db79ba24d5dcf623fae1"
+  },
+  "checks": [
+    {
+      "id": "BASELINE_OLD",
+      "outcome": "PASS",
+      "reason": "Executed customer-local mock contract test"
+    },
+    {
+      "id": "REPRO_NEW",
+      "outcome": "PASS",
+      "reason": "Executed customer-local mock contract test"
+    },
+    {
+      "id": "REPAIR_NEW",
+      "outcome": "FAIL",
+      "reason": "Executed customer-local mock contract test"
+    },
+    {
+      "id": "REGRESSION",
+      "outcome": "FAIL",
+      "reason": "Executed customer-local mock contract test"
+    },
+    {
+      "id": "STATIC",
+      "outcome": "PASS",
+      "reason": "Executed strict TypeScript compiler on candidate"
+    },
+    {
+      "id": "POLICY",
+      "outcome": "PASS",
+      "reason": "Approved single-line change, immutable proof inputs and no extra artifact files"
+    }
+  ],
+  "limitations": [
+    "Fictional registered fixture only; no general repository coverage claim.",
+    "Mock checks execute in the caller environment and are not a security sandbox.",
+    "Unsigned local manifest is not authenticated CI provenance or publication approval.",
+    "Structural OpenAPI subset only; pinned oasdiff integration remains pending."
+  ],
+  "fingerprint": "c6f6290af46740cddf2f7c6f35782e24cc19560149d8897a6e868ec2956e602f"
+}

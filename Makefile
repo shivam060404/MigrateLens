@@ -1,17 +1,13 @@
-PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+VENV ?= .venv
+PYTHON ?= $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
 export PYTHONPATH := $(CURDIR)/backend
 export UV_CACHE_DIR := $(CURDIR)/.local/uv-cache
 export NEXT_TELEMETRY_DISABLED := 1
 
-.PHONY: bootstrap dev dev-backend dev-frontend health schemas lint format typecheck test-unit test-integration test-e2e demo seed-demo benchmark-smoke verify-local migrate down
+.PHONY: bootstrap dev dev-backend dev-frontend health schemas check-schemas check-locks lint format typecheck test test-unit test-integration test-security test-typescript test-oss test-e2e build build-oss build-backend build-frontend demo proof proof-registered seed-demo benchmark-smoke oss-ci verify-local ci migrate down
 bootstrap:
-	$(PYTHON) -c 'import sys; assert sys.version_info[:2] == (3,14), "Python 3.14 required"'
-	node -e 'if (process.versions.node.split(".")[0] !== "22") process.exit(1)'
-	pnpm --version
-	uv venv --python python3 .venv
-	uv pip sync --python .venv/bin/python backend/requirements.lock
-	pnpm install --frozen-lockfile --ignore-scripts
-	$(MAKE) schemas health
+	$(PYTHON) scripts/bootstrap.py --venv "$(VENV)"
+	$(MAKE) check-locks check-schemas health VENV="$(VENV)"
 
 dev:
 	$(PYTHON) scripts/dev.py
@@ -28,6 +24,12 @@ health:
 schemas:
 	$(PYTHON) scripts/generate_contracts.py
 
+check-schemas:
+	$(PYTHON) scripts/generate_contracts.py --check
+
+check-locks:
+	$(PYTHON) scripts/check_lockfiles.py
+
 lint:
 	$(PYTHON) -m ruff check --config backend/pyproject.toml backend/src backend/tests scripts
 	$(PYTHON) -m ruff format --check --config backend/pyproject.toml backend/src backend/tests scripts
@@ -38,28 +40,78 @@ format:
 
 typecheck:
 	$(PYTHON) -m mypy --config-file backend/pyproject.toml backend/src
+	node scripts/frontend.mjs typegen
 	node node_modules/typescript/bin/tsc --noEmit -p frontend/tsconfig.json
 	node node_modules/typescript/bin/tsc --noEmit -p backend/analyzer-ts/tsconfig.json
+	node node_modules/typescript/bin/tsc --noEmit -p oss/tsconfig.json
+
+test: test-unit test-security test-integration test-typescript
 
 test-unit:
-	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/unit -q
+	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/unit -q --junitxml=.local/test-results/unit.xml
 
 test-integration:
-	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/integration -q
+	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/integration -q --junitxml=.local/test-results/integration.xml
+
+test-security:
+	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/security -q --junitxml=.local/test-results/security.xml
+
+test-typescript: build-oss
+	node --test backend/analyzer-ts/recipes.test.mjs
+	node --test oss/test/oss.test.mjs
+
+test-oss: build-oss
+	node --test oss/test/oss.test.mjs
 
 test-e2e:
-	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/e2e -q
+	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/e2e -q --junitxml=.local/test-results/e2e.xml
 
-demo seed-demo:
+build: build-oss build-backend build-frontend
+
+build-oss:
+	node node_modules/typescript/bin/tsc -p oss/tsconfig.json
+
+build-backend:
+	$(PYTHON) -m build --no-isolation --outdir .local/dist backend
+
+build-frontend:
+	node scripts/frontend.mjs build
+
+proof: build-oss
+	node oss/dist/cli.js prove --fixture path --output artifacts/oss-proof
+
+proof-registered: build-oss
+	node oss/dist/cli.js prove --config oss/fixtures/registered-path-proof.json --output artifacts/registered-proof
+
+demo: proof
+
+seed-demo:
 	$(PYTHON) -m src.cli.main demo
 
 benchmark-smoke:
 	$(PYTHON) -m src.cli.main benchmark
 
-verify-local: lint typecheck test-unit test-integration test-e2e
+verify-local ci: check-locks check-schemas lint typecheck test-unit test-security test-typescript test-integration build test-e2e benchmark-smoke
+
+oss-ci: build-oss test-oss proof proof-registered
 
 migrate:
-	$(PYTHON) scripts/pending_gate.py 'PostgreSQL migrations (Phase 2)'
+	$(PYTHON) -m alembic -c backend/alembic.ini upgrade head
+
+.PHONY: migrate-sql
+migrate-sql:
+	$(PYTHON) -m alembic -c backend/alembic.ini upgrade head --sql
+
+.PHONY: identity-init identity-token
+identity-init:
+	$(PYTHON) scripts/local_identity.py init
+
+identity-token:
+	$(PYTHON) scripts/local_identity.py token --subject "$(SUBJECT)"
+
+.PHONY: test-database
+test-database:
+	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/database -q --junitxml=.local/test-results/database.xml
 
 down:
-	$(PYTHON) scripts/pending_gate.py 'Background shutdown; current make dev runs in foreground and stops both children on Ctrl-C'
+	$(PYTHON) scripts/dev.py --stop

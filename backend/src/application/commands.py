@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Callable
 
-from src.application.fixture_pipeline import SCENARIOS, SUPPORTED, FixturePipeline
+from src.application.fixture_pipeline import ABSTENTIONS, SCENARIOS, SUPPORTED, FixturePipeline
 from src.domain.evidence import validate_manifest
 
 
@@ -43,7 +43,12 @@ class FixtureCommands:
         scenarios = SCENARIOS if command in {"demo", "benchmark"} else (scenario,)
         evidence = [self.pipeline_factory(name, False).run(name) for name in scenarios]
         failed = any(
-            item.scenario in SUPPORTED and item.verdict != "VERIFIED_FOR_DECLARED_SCOPE"
+            item.verdict
+            != (
+                "VERIFIED_FOR_DECLARED_SCOPE"
+                if item.scenario in SUPPORTED
+                else ABSTENTIONS[item.scenario][0]
+            )
             for item in evidence
         )
         summary: dict = {
@@ -61,13 +66,15 @@ class FixtureCommands:
             wrong = self.pipeline_factory("path", True).run("path")
             checks = {check.id: check.outcome for check in wrong.checks}
             rejected = (
-                wrong.verdict == "VALIDATION_FAILED"
+                len(checks) == len(wrong.checks)
+                and wrong.verdict == "VALIDATION_FAILED"
                 and checks.get("STATIC") == "PASS"
                 and checks.get("REPAIR_NEW") == "FAIL"
             )
             summary.update(
                 {
                     "wrong_patch_verdict": wrong.verdict,
+                    "negative_control_fingerprint": wrong.fingerprint,
                     "negative_control_passed": rejected,
                     "comparison_arms": {
                         "A": "NOT RUN",

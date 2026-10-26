@@ -45,3 +45,19 @@ def test_workspace_source_locations_are_real():
     assert (ROOT / "infra").is_dir()
     assert not (ROOT / "services").exists()
     assert not (ROOT / "apps").exists()
+
+
+def test_entrypoints_do_not_import_vendor_adapters_or_evaluate_checks():
+    for layer in ["cli", "api"]:
+        for file in (ROOT / "backend/src" / layer).rglob("*.py"):
+            tree = ast.parse(file.read_text())
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    assert not node.module.startswith(
+                        (
+                            "src.infrastructure",
+                            "src.domain.assessment",
+                            "src.domain.fixture_acceptance",
+                        )
+                    ), (file, node.module)
+    assert not (ROOT / "backend/src/migratelens").exists()

@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -86,3 +87,42 @@ def test_unsupported_scan_does_not_launch_adapter():
 
     with pytest.raises(ValueError, match="registered"):
         FixtureCommands(factory).execute("scan", "ambiguous")
+
+
+@pytest.mark.parametrize(
+    ("static", "behavior", "negative_verdict", "exit_code"),
+    [
+        ("PASS", "FAIL", "VALIDATION_FAILED", 0),
+        ("FAIL", "FAIL", "VALIDATION_FAILED", 1),
+        ("PASS", "UNAVAILABLE", "VALIDATION_FAILED", 1),
+        ("PASS", "PASS", "VERIFIED_FOR_DECLARED_SCOPE", 1),
+    ],
+)
+def test_benchmark_requires_behavioral_negative_control(
+    static, behavior, negative_verdict, exit_code
+):
+    """Command policy test doubles; this is not provider validation evidence."""
+
+    def factory(scenario, wrong):
+        from src.application.fixture_pipeline import ABSTENTIONS
+
+        evidence = SimpleNamespace(
+            scenario=scenario,
+            fingerprint="a" * 64,
+            verdict=(
+                negative_verdict
+                if wrong
+                else ABSTENTIONS[scenario][0]
+                if scenario in ABSTENTIONS
+                else "VERIFIED_FOR_DECLARED_SCOPE"
+            ),
+            checks=[
+                Check(id="STATIC", outcome=Outcome(static), reason="unit double"),
+                Check(id="REPAIR_NEW", outcome=Outcome(behavior), reason="unit double"),
+            ],
+        )
+        return SimpleNamespace(run=lambda _: evidence)
+
+    result = FixtureCommands(factory).execute("benchmark")
+    assert result.exit_code == exit_code
+    assert result.payload["negative_control_passed"] is (exit_code == 0)

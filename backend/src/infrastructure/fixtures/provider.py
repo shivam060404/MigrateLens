@@ -9,6 +9,8 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 @contextmanager
 def provider(scenario: str, version: str):
+    if scenario not in {"path", "field", "query"} or version not in {"old", "new"}:
+        raise ValueError("Only registered supported provider versions may run")
     interactions: list[dict] = []
 
     class Handler(BaseHTTPRequestHandler):

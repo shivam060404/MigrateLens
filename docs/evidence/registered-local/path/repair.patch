@@ -1,0 +1,5 @@
+--- a/client.ts
++++ b/client.ts
+@@ -5,1 +5,1 @@
+-  const response = await fetch(`${base}/v1/customers/${encodeURIComponent(id)}`);
++  const response = await fetch(`${base}/v2/customers/${encodeURIComponent(id)}`);

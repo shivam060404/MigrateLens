@@ -12,6 +12,8 @@ from src.domain.models import digest
 
 # Filled from the reviewed bundled inputs below; never regenerated at runtime.
 INPUT_DIGESTS: dict[str, str] = {
+    # Readable exclusion fixture; deliberately absent from CANDIDATE_DIGESTS.
+    "fixtures/consumers/unsupported/dynamic.ts": "43835bec83b97318d14b7db5467ac6ceeae98d76f222a40379dbb1741569f22b",
     "fixtures/consumers/northstar/src/integrations/customer/client.ts": "42da31964e1bb8050ed8022ad4c65129f798c4c8d027b928f234f69d3a560201",
     "fixtures/consumers/bridge.mjs": "11079c12a07344c3f74de19be88c9815efe96cb117cbb5941cfecc03950bb378",
     "fixtures/provider/mappings.json": "ef8c9e9fd69dddd1f241a39e2a1d0e4cce4c23f7c8dea52ab66d0b83bccfdfaa",

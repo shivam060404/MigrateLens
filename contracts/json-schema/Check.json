@@ -1,0 +1,51 @@
+{
+  "$defs": {
+    "Outcome": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "ERROR",
+        "UNAVAILABLE",
+        "SKIPPED",
+        "NOT_APPLICABLE",
+        "FLAKY"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "duration_ms": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Duration Ms",
+      "type": "integer"
+    },
+    "id": {
+      "maxLength": 80,
+      "title": "Id",
+      "type": "string"
+    },
+    "observations": {
+      "additionalProperties": true,
+      "title": "Observations",
+      "type": "object"
+    },
+    "outcome": {
+      "$ref": "#/$defs/Outcome"
+    },
+    "reason": {
+      "maxLength": 2000,
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "outcome",
+    "reason"
+  ],
+  "title": "Check",
+  "type": "object"
+}
