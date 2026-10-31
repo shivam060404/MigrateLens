@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { prepare } from './engine.js';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { prove, verify } from './proof.js';
 import { analyzeRegistered, proposeRegisteredPath } from './registered.js';
-import { previewRegistered, proveRegistered, verifyRegistered } from './registered-proof.js';
+import { exportRegistered, previewRegistered, proveRegistered, verifyRegistered } from './registered-proof.js';
 
 function option(args: string[], name: string, fallback?: string): string {
   const index = args.indexOf(name);
@@ -23,6 +25,11 @@ function main(argv: string[]): number {
     process.stdout.write(previewRegistered(option(args, '--manifest'), option(args, '--config')));
     return 0;
   }
+  if (command === 'export') {
+    const summary = exportRegistered(option(args, '--manifest'), option(args, '--config'));
+    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
+    return summary.verdict === 'VALIDATION_FAILED' ? 1 : 0;
+  }
   if (command === 'verify' || command === 'evidence') {
     const result = args.includes('--config') ? verifyRegistered(option(args, '--manifest'), option(args, '--config')) : verify(option(args, '--manifest'));
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -31,7 +38,14 @@ function main(argv: string[]): number {
   if (args.includes('--config')) {
     if (args.includes('--fixture') || args.includes('--negative-control')) throw new Error('Registered analysis cannot use fixture options');
     if (command === 'prove') {
-      const result = proveRegistered(option(args, '--config'), option(args, '--output', 'artifacts/registered-proof'));
+      const config = option(args, '--config');
+      const result = proveRegistered(config, option(args, '--output', 'artifacts/registered-proof'));
+      if (args.includes('--summary')) {
+        const destination = resolve(option(args, '--summary'));
+        const summary = exportRegistered(resolve(result.folder, 'manifest.json'), config);
+        mkdirSync(dirname(destination), { recursive: true });
+        writeFileSync(destination, `${JSON.stringify(summary, null, 2)}\n`);
+      }
       process.stdout.write(`${JSON.stringify({ folder: result.folder, ...result.evidence }, null, 2)}\n`);
       return result.evidence.verdict === 'VALIDATION_FAILED' ? 1 : 0;
     }

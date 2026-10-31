@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy.engine import make_url
 
 from src.application.control import AttemptRequest, ControlService, CreateBinding, CreateCase
+from src.config.database_gate import validate_test_database_urls
 from src.domain.control import AccessDenied, Conflict, Principal
 from src.infrastructure.persistence import schema as s
 from src.infrastructure.persistence.database import Database
@@ -16,24 +16,18 @@ from src.infrastructure.persistence.repository import PostgresRepository
 
 @pytest.fixture(scope="module")
 def databases():
+    if os.environ.get("ML_TEST_DATABASE_DISPOSABLE") != "yes":
+        pytest.fail("Set ML_TEST_DATABASE_DISPOSABLE=yes for an isolated throwaway database")
     admin_url = os.environ.get("ML_TEST_ADMIN_DATABASE_URL")
     runtime_url = os.environ.get("ML_TEST_RUNTIME_DATABASE_URL")
     if not admin_url or not runtime_url:
         pytest.fail(
             "Set both ML_TEST_ADMIN_DATABASE_URL and ML_TEST_RUNTIME_DATABASE_URL for a disposable migrated PostgreSQL *_test database"
         )
-    for url in [admin_url, runtime_url]:
-        parsed = make_url(url)
-        if (
-            not parsed.drivername.startswith("postgresql")
-            or not parsed.database
-            or not parsed.database.endswith("_test")
-        ):
-            pytest.fail(
-                "Live isolation tests require PostgreSQL URLs for a disposable *_test database"
-            )
-    if make_url(admin_url).database != make_url(runtime_url).database:
-        pytest.fail("Admin and runtime roles must target the same disposable database")
+    try:
+        validate_test_database_urls(admin_url, runtime_url)
+    except ValueError as exc:
+        pytest.fail(str(exc))
     admin = sa.create_engine(admin_url, hide_parameters=True)
     runtime = sa.create_engine(runtime_url, hide_parameters=True)
     try:
@@ -46,6 +40,12 @@ def databases():
                 sa.text("SELECT version_num FROM alembic_version")
             ).scalar_one()
             assert version == "0001_tenant_control"
+            existing_tenants = connection.execute(
+                sa.select(sa.func.count()).select_from(s.tenants)
+            ).scalar_one()
+            assert existing_tenants == 0, (
+                "Live isolation tests require an empty disposable database"
+            )
         yield admin, runtime
     finally:
         runtime.dispose()

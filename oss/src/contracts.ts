@@ -64,6 +64,16 @@ function queryParameters(operation: Json): string[] {
     .map((item) => field(item.name, 'parameter name'));
 }
 
+function comparable(value: unknown, depth = 0): unknown {
+  if (depth > 64) throw new Error('Contract comparison exceeds depth budget');
+  if (Array.isArray(value)) return value.map(item => comparable(item, depth + 1));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'description' && key !== 'summary' && !(depth === 0 && key === 'info'))
+      .sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, comparable(item, depth + 1)]));
+  }
+  return value;
+}
+
 export function detect(oldContract: Json, newContract: Json): Finding[] {
   const oldOps = operations(oldContract);
   const newOps = operations(newContract);
@@ -78,7 +88,7 @@ export function detect(oldContract: Json, newContract: Json): Finding[] {
       const before = responseProperties(oldOp.operation);
       const after = responseProperties(next.operation);
       if ('name' in before && !('name' in after)) {
-        const afterPointer = 'profile' in after ? '/profile/displayName' : 'nickname' in after ? '/nickname' : '';
+        const afterPointer = 'profile' in after ? '/profile/displayName' : 'nickname' in after ? '/nickname/displayName' : '';
         if (!afterPointer) throw new Error('Removed response field without supported relocation');
         findings.push({ ruleId: 'ML-FIELD-001', kind: 'response_field', operation: id, before: '/name', after: afterPointer });
       }
@@ -92,5 +102,47 @@ export function detect(oldContract: Json, newContract: Json): Finding[] {
     }
   }
   if (findings.length > 1) throw new Error('Multiple simultaneous changes require separate plans');
+  if (findings.length === 0 && JSON.stringify(comparable(oldContract)) !== JSON.stringify(comparable(newContract))) {
+    throw new Error('Unsupported contract change outside repair rules');
+  }
+  if (findings.length === 1 && findings[0]) {
+    const finding = findings[0];
+    const oldComparable = structuredClone(oldContract);
+    const paths = object(oldComparable.paths, 'paths');
+    if (finding.kind === 'endpoint_path') {
+      paths[finding.after] = paths[finding.before];
+      delete paths[finding.before];
+    } else {
+      const operationPath = oldOps.get(finding.operation)?.path;
+      if (!operationPath) throw new Error('Mapped operation missing');
+      const operation = object(object(paths[operationPath], 'path item').get, 'GET operation');
+      if (finding.kind === 'query_parameter') {
+        const parameters = operation.parameters;
+        if (!Array.isArray(parameters)) throw new Error('Query parameters missing');
+        const matches = parameters.filter(item => {
+          const parameter = object(item, 'parameter');
+          return parameter.in === 'query' && parameter.name === finding.before;
+        });
+        if (matches.length !== 1) throw new Error('Query rename requires one old parameter');
+        object(matches[0], 'parameter').name = finding.after;
+      } else if (finding.kind === 'response_field') {
+        const properties = responseProperties(operation);
+        const oldField = finding.before.slice(1);
+        const oldSchema = properties[oldField];
+        if (!oldSchema) throw new Error('Relocated field missing');
+        delete properties[oldField];
+        if (finding.after === '/profile/displayName') {
+          properties.profile = { type: 'object', properties: { displayName: oldSchema } };
+        } else if (finding.after === '/nickname/displayName') {
+          properties.nickname = { type: 'object', properties: { displayName: oldSchema } };
+        } else {
+          throw new Error('Unsupported response field relocation');
+        }
+      }
+    }
+    if (JSON.stringify(comparable(oldComparable)) !== JSON.stringify(comparable(newContract))) {
+      throw new Error('Supported migration includes another unsupported contract change');
+    }
+  }
   return findings;
 }

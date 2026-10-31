@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, realpathSync } from 'node:fs';
-import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, realpathSync } from 'node:fs';
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Project, SyntaxKind } from 'ts-morph';
 import { detect, parseContract } from './contracts.js';
 import type { Finding } from './model.js';
@@ -54,10 +54,30 @@ function checkedPath(root: string, name: string, extensions: string[]): string {
   return target;
 }
 
-function limitedRead(path: string, limit: number): Buffer {
-  const bytes = readFileSync(path);
-  if (bytes.byteLength > limit) throw new Error('Registered input exceeds byte budget');
-  return bytes;
+export function limitedRead(path: string, limit: number): Buffer {
+  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const before = fstatSync(fd);
+    if (!before.isFile() || before.size > limit) throw new Error('Registered input exceeds byte budget or is not regular');
+    const bytes = Buffer.alloc(before.size);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const count = readSync(fd, bytes, offset, bytes.length - offset, offset);
+      if (count === 0) throw new Error('Registered input changed during read');
+      offset += count;
+    }
+    const after = fstatSync(fd);
+    if (after.size !== before.size || after.ino !== before.ino || after.dev !== before.dev) {
+      throw new Error('Registered input changed during read');
+    }
+    return bytes;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+export function readRegisteredInput(root: string, name: string, extensions: string[], limit: number): Buffer {
+  return limitedRead(checkedPath(root, name, extensions), limit);
 }
 
 function parseRegistration(bytes: Buffer): Registration {
@@ -89,6 +109,13 @@ function digest(bytes: Buffer): string {
   return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 }
 
+export function registrationRoot(configPath: string): string {
+  const directory = dirname(resolve(configPath));
+  if (lstatSync(directory).isSymbolicLink()) throw new Error('Registration directory is a symlink');
+  // A conventional hidden config directory describes its containing repository.
+  return realpathSync(basename(directory) === '.migratelens' ? dirname(directory) : directory);
+}
+
 function classify(source: string, finding: Finding): Classification {
   const project = new Project({ useInMemoryFileSystem: true });
   const file = project.createSourceFile('source.ts', source);
@@ -116,13 +143,11 @@ function classify(source: string, finding: Finding): Classification {
 export function analyzeRegistered(configPath: string) {
   const path = resolve(configPath);
   if (lstatSync(path).isSymbolicLink() || !lstatSync(path).isFile()) throw new Error('Registration must be a regular file');
-  const root = realpathSync(dirname(path));
+  const root = registrationRoot(path);
   const registration = parseRegistration(limitedRead(path, 16_384));
-  const oldPath = checkedPath(root, registration.oldSpec, ['.json']);
-  const newPath = checkedPath(root, registration.newSpec, ['.json']);
-  const oldBytes = limitedRead(oldPath, 1_000_000);
-  const newBytes = limitedRead(newPath, 1_000_000);
-  const sources = registration.sourceFiles.map(name => ({ name, bytes: limitedRead(checkedPath(root, name, ['.ts', '.tsx']), 65_536) }));
+  const oldBytes = readRegisteredInput(root, registration.oldSpec, ['.json'], 1_000_000);
+  const newBytes = readRegisteredInput(root, registration.newSpec, ['.json'], 1_000_000);
+  const sources = registration.sourceFiles.map(name => ({ name, bytes: readRegisteredInput(root, name, ['.ts', '.tsx'], 65_536) }));
   const identities = {
     registration: digest(limitedRead(path, 16_384)),
     oldSpec: digest(oldBytes), newSpec: digest(newBytes),
@@ -164,7 +189,7 @@ export function proposeRegisteredPath(configPath: string) {
     throw new Error('Registered patch requires one declared, confirmed endpoint path usage');
   }
   const path = resolve(configPath);
-  const root = realpathSync(dirname(path));
+  const root = registrationRoot(path);
   const registration = parseRegistration(limitedRead(path, 16_384));
   if (digest(limitedRead(path, 16_384)) !== analysis.identities.registration) throw new Error('Registration changed during planning');
   const name = registration.sourceFiles[0];

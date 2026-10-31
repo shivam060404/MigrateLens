@@ -127,8 +127,14 @@ def create_control_plane(settings: Settings):
     public_key = Path(settings.identity_public_key_path).read_bytes()
     verifier = TokenVerifier(public_key, settings.identity_issuer, settings.identity_audience)
     engine = create_engine(settings.database_url, pool_pre_ping=True, hide_parameters=True)
+    database = Database(engine)
+    try:
+        database.check_runtime_role()
+    except Exception:
+        engine.dispose()
+        raise
     service = ControlService(
-        PostgresRepository(Database(engine)),
+        PostgresRepository(database),
         artifact_reader=LocalArtifactStore(ROOT / settings.artifact_root),
         emergency_stop=settings.emergency_stop,
     )

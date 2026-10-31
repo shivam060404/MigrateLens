@@ -1,11 +1,13 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
+import { Project, SyntaxKind } from 'ts-morph';
 import { canonical, hash } from './engine.js';
-import { proposeRegisteredPath } from './registered.js';
+import { limitedRead, proposeRegisteredPath, readRegisteredInput, registrationRoot } from './registered.js';
+import { assertNoKnownSecret } from './secrets.js';
 import type { Check } from './model.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -13,6 +15,13 @@ const template = join(here, '..', 'templates', 'registered-path.test.mjs');
 const require = createRequire(import.meta.url);
 const tsc = require.resolve('typescript/bin/tsc');
 const IDS = ['BASELINE_OLD', 'REPRO_NEW', 'REPAIR_NEW', 'REGRESSION'] as const;
+
+function readFileSync(path: string): Buffer;
+function readFileSync(path: string, encoding: 'utf8'): string;
+function readFileSync(path: string, encoding?: 'utf8'): Buffer | string {
+  const bytes = limitedRead(path, 1_000_000);
+  return encoding ? bytes.toString(encoding) : bytes;
+}
 
 interface Vector {
   args: unknown[];
@@ -63,6 +72,20 @@ function proofFrom(config: Registration): Proof {
   });
   return { exportName: value.exportName, cases: cases as [Vector, Vector] };
 }
+function assertStandaloneSource(source: string): void {
+  const project = new Project({ useInMemoryFileSystem: true });
+  const file = project.createSourceFile('registered-source.ts', source);
+  if (file.getImportDeclarations().length || file.getExportDeclarations().some(item => item.getModuleSpecifierValue()) ||
+      file.getDescendantsOfKind(SyntaxKind.ImportEqualsDeclaration).length ||
+      file.getDescendantsOfKind(SyntaxKind.ImportKeyword).length ||
+      file.getDescendantsOfKind(SyntaxKind.CallExpression).some(call => call.getExpression().getText() === 'require')) {
+    throw new Error('Registered proof requires standalone source without imports or require');
+  }
+  if (file.getStatements().some(statement => !statement.isKind(SyntaxKind.TypeAliasDeclaration) &&
+      !statement.isKind(SyntaxKind.InterfaceDeclaration) && !statement.isKind(SyntaxKind.FunctionDeclaration))) {
+    throw new Error('Registered proof requires declaration-only module top level');
+  }
+}
 function matchesResponseShape(value: unknown, schemaValue: unknown, depth = 0): boolean {
   if (depth > 8) throw new Error('Response schema exceeds proof depth');
   const schema = record(schemaValue, 'response schema');
@@ -99,20 +122,24 @@ function matchesResponseShape(value: unknown, schemaValue: unknown, depth = 0): 
 }
 function readBound(configPath: string) {
   const proposal = proposeRegisteredPath(configPath);
-  const configBytes = readFileSync(resolve(configPath));
+  const configBytes = limitedRead(resolve(configPath), 16_384);
   if (`sha256:${hash(configBytes)}` !== proposal.identities.registration) throw new Error('Registration changed during proof');
   const config = JSON.parse(configBytes.toString('utf8')) as Registration;
   const proof = proofFrom(config);
   if (config.mappings.length !== 1) throw new Error('Registered path proof requires exactly one mapping');
-  const root = dirname(resolve(configPath));
+  const root = registrationRoot(configPath);
   const sourceName = config.sourceFiles[0];
   if (!sourceName) throw new Error('Missing source');
-  const source = readFileSync(join(root, sourceName));
-  const oldSpec = readFileSync(join(root, config.oldSpec));
-  const newSpec = readFileSync(join(root, config.newSpec));
+  const source = readRegisteredInput(root, sourceName, ['.ts', '.tsx'], 65_536);
+  const oldSpec = readRegisteredInput(root, config.oldSpec, ['.json'], 1_000_000);
+  const newSpec = readRegisteredInput(root, config.newSpec, ['.json'], 1_000_000);
   if (`sha256:${hash(source)}` !== proposal.identities.sources[sourceName] ||
       `sha256:${hash(oldSpec)}` !== proposal.identities.oldSpec ||
       `sha256:${hash(newSpec)}` !== proposal.identities.newSpec) throw new Error('Registered input changed during proof');
+  for (const [label, bytes] of [['registration', configBytes], ['source', source], ['old contract', oldSpec], ['new contract', newSpec]] as const) {
+    assertNoKnownSecret(label, bytes);
+  }
+  assertStandaloneSource(source.toString('utf8'));
   const oldPaths = record(record(JSON.parse(oldSpec.toString('utf8')) as unknown, 'old contract').paths, 'old paths');
   const newPaths = record(record(JSON.parse(newSpec.toString('utf8')) as unknown, 'new contract').paths, 'new paths');
   const operation = config.mappings[0]?.operation;
@@ -179,7 +206,7 @@ function makeManifest(folder: string, input: ReturnType<typeof readBound>, obser
       patch: `sha256:${hash(readFileSync(join(folder, 'repair.patch')))}`,
       testSuite: `sha256:${hash(readFileSync(join(folder, 'tests', 'proof.test.mjs')))}`,
       policy: `sha256:${hash(canonical({ allowedRules: ['ML-PATH-001'], maxChangedFiles: 1, maxChangedLines: 1, noPublication: true, proofEnvironment: 'caller-local-unattested' }))}`,
-      implementation: `sha256:${hash(Buffer.concat(['registered.js', 'registered-proof.js', 'contracts.js'].map(file => readFileSync(join(here, file)))))}`,
+      implementation: `sha256:${hash(Buffer.concat(['registered.js', 'registered-proof.js', 'contracts.js', 'secrets.js'].map(file => readFileSync(join(here, file)))))}`,
       runner: `node:${process.version};typescript:5.9.3;caller-local-unattested`,
     },
     checks: observed,
@@ -187,6 +214,7 @@ function makeManifest(folder: string, input: ReturnType<typeof readBound>, obser
       'Mapping and expected outputs are self-declared, not independently approved.',
       'Proof executes consumer source in the caller environment; it is not a sandbox.',
       'Local hashes do not authenticate CI origin or authorize publication.',
+      'Known credential patterns are rejected before artifact creation; this is not a complete secret scanner.',
       'Only one direct-fetch path migration with unchanged GET operation is covered.',
     ],
   };
@@ -237,6 +265,32 @@ export function verifyRegistered(manifestPath: string, configPath: string): Regi
     throw new Error('Registered proof evidence changed or stale');
   }
   return current;
+}
+
+/** Shareable metadata only. This is a local assertion, not authenticated CI provenance. */
+export function exportRegistered(manifestPath: string, configPath: string) {
+  const evidence = verifyRegistered(manifestPath, configPath);
+  const sources = evidence.identities.sources as Record<string, string>;
+  return {
+    schemaVersion: 'registered-export-1',
+    classification: 'unattested local metadata',
+    verdict: evidence.verdict,
+    fingerprint: evidence.fingerprint,
+    manifestHash: `sha256:${hash(readFileSync(resolve(manifestPath)))}`,
+    identities: {
+      registration: evidence.identities.registration,
+      oldSpec: evidence.identities.oldSpec,
+      newSpec: evidence.identities.newSpec,
+      sourceHashes: Object.values(sources).sort(),
+      candidate: evidence.identities.candidate,
+      patch: evidence.identities.patch,
+      testSuite: evidence.identities.testSuite,
+      policy: evidence.identities.policy,
+      implementation: evidence.identities.implementation,
+      runner: evidence.identities.runner,
+    },
+    checks: evidence.checks.map(({ id, outcome }) => ({ id, outcome })),
+  };
 }
 
 export function previewRegistered(manifestPath: string, configPath: string): string {

@@ -26,32 +26,48 @@ function pathFor(spec, params) {
 async function targeted(module, spec, vector) {
   const expectedPath = pathFor(spec, vector.pathParams);
   const previous = globalThis.fetch;
-  globalThis.fetch = async address => {
+  let requests = 0;
+  let matched = false;
+  const attempted = [];
+  globalThis.fetch = async (address, options) => {
+    requests += 1;
     const url = new URL(address);
-    const found = url.pathname === expectedPath;
+    const method = options?.method ?? 'GET';
+    attempted.push({ origin: url.origin, path: url.pathname, method });
+    const found = url.origin === 'http://fixture.invalid' && url.pathname === expectedPath &&
+      url.search === '' && url.hash === '' && method === 'GET' && options?.body === undefined;
+    matched ||= found;
     return { status: found ? 200 : 404, ok: found, json: async () => found ? vector.response : { error: 'missing' } };
   };
   try {
     const entry = module[config.proof.exportName];
     assert.equal(typeof entry, 'function', 'registered export missing');
     assert.deepEqual(await entry(...vector.args), vector.expected);
-    return true;
+    assert.equal(requests, 1, 'proof must make exactly one request');
+    assert.equal(matched, true, 'proof must reach the declared endpoint');
+    return { passed: true, requests, attempted };
   } catch {
-    return false;
+    return { passed: false, requests, attempted };
   } finally {
     globalThis.fetch = previous;
   }
 }
 
 test('BASELINE_OLD', async () => {
-  assert.equal(await targeted(original, oldSpec, vectors[0]), true);
+  assert.equal((await targeted(original, oldSpec, vectors[0])).passed, true);
 });
 test('REPRO_NEW', async () => {
-  assert.equal(await targeted(original, newSpec, vectors[0]), false);
+  const result = await targeted(original, newSpec, vectors[0]);
+  assert.equal(result.passed, false);
+  assert.equal(result.requests, 1, 'reproduction must execute exactly one request');
+  assert.deepEqual(result.attempted, [{
+    origin: 'http://fixture.invalid', path: pathFor(oldSpec, vectors[0].pathParams), method: 'GET',
+  }], 'reproduction must call the old route on the fixture origin with GET');
+  assert.notEqual(result.attempted[0].path, pathFor(newSpec, vectors[0].pathParams), 'old and new routes must differ');
 });
 test('REPAIR_NEW', async () => {
-  assert.equal(await targeted(repaired, newSpec, vectors[0]), true);
+  assert.equal((await targeted(repaired, newSpec, vectors[0])).passed, true);
 });
 test('REGRESSION', async () => {
-  assert.equal(await targeted(repaired, newSpec, vectors[1]), true);
+  assert.equal((await targeted(repaired, newSpec, vectors[1])).passed, true);
 });

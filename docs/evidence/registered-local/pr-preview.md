@@ -26,7 +26,7 @@
 | STATIC | PASS |
 | POLICY | PASS |
 
-Evidence fingerprint: `96ebd7f52170361e2886b3ce309903b366889ea0b313b6594905d54a9474264b`
+Evidence fingerprint: `f0b4115538d4852ab4d1d5c7042f08b058ee80e79efedbf50696dbe1c97209de`
 
 ## Publication gate
 

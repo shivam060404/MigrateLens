@@ -1,0 +1,62 @@
+name: MigrateLens registered proof
+description: Run the bounded registered API path proof in the caller's GitHub Actions runner
+branding:
+  icon: shield
+  color: blue
+inputs:
+  config:
+    description: Repository-relative registration path, normally .migratelens/registration.json
+    required: true
+outputs:
+  metadata:
+    description: Path to metadata-only registered evidence on the caller runner
+    value: ${{ steps.proof.outputs.metadata }}
+runs:
+  using: composite
+  steps:
+    - name: Set up pinned Node
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: '22.23.1'
+    - name: Install pinned OSS dependencies without lifecycle scripts
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        npm install --global pnpm@11.11.0 --ignore-scripts
+        pnpm install --frozen-lockfile --ignore-scripts --filter @migratelens/oss-core
+    - name: Build OSS engine
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        node oss/node_modules/typescript/bin/tsc -p oss/tsconfig.json
+    - name: Run registered proof without retained checkout credentials
+      id: proof
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        ML_ACTION_CONFIG: ${{ inputs.config }}
+        ML_ACTION_ENGINE: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        repo_root="$(git rev-parse --show-toplevel)"
+        if [ "$repo_root" != "$GITHUB_WORKSPACE" ]; then
+          echo 'Refusing proof outside the checked-out repository root' >&2
+          exit 1
+        fi
+        if git config --local --get-regexp 'http\..*\.extraheader' >/dev/null 2>&1; then
+          echo 'Refusing proof: checkout has retained HTTP credentials' >&2
+          exit 1
+        else
+          status=$?
+          if [ "$status" -ne 1 ]; then
+            echo 'Refusing proof: cannot inspect checkout credentials' >&2
+            exit 1
+          fi
+        fi
+        output_root="$RUNNER_TEMP/migratelens-proof"
+        metadata="$RUNNER_TEMP/migratelens-registered.json"
+        node "$ML_ACTION_ENGINE/oss/dist/cli.js" prove \
+          --config "$ML_ACTION_CONFIG" --output "$output_root" --summary "$metadata"
+        printf 'metadata=%s\n' "$metadata" >> "$GITHUB_OUTPUT"

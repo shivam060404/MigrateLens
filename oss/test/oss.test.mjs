@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, renameSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { prepare } from '../dist/engine.js';
-import { parseContract } from '../dist/contracts.js';
+import { detect, parseContract } from '../dist/contracts.js';
 import { applyRecipe } from '../dist/recipes.js';
 import { prove, verify } from '../dist/proof.js';
 import { analyzeRegistered, proposeRegisteredPath } from '../dist/registered.js';
-import { previewRegistered, proveRegistered, verifyRegistered } from '../dist/registered-proof.js';
+import { exportRegistered, previewRegistered, proveRegistered, verifyRegistered } from '../dist/registered-proof.js';
 
 function temporary(fn) {
   const root = mkdtempSync(join(tmpdir(), 'migratelens-oss-test-'));
@@ -47,6 +47,24 @@ test('unresolved refs and duplicate target calls fail closed', () => {
     '  await fetch(`${base}/v1/customers/${encodeURIComponent(id)}`);\n  const response = await fetch(`${base}/v1/customers/${encodeURIComponent(id)}`);',
   );
   assert.throws(() => applyRecipe(duplicate, prepared.recipe), /Exactly one approved AST edit/);
+});
+
+test('unrecognized contract changes never become no-change or path-only assessments', () => {
+  const old = JSON.parse(readFileSync(new URL('../fixtures/path-old.json', import.meta.url)));
+  const changed = structuredClone(old);
+  changed.paths['/v1/customers/{id}'].get.responses['200'].content['application/json'].schema.properties.tier.type = 'integer';
+  assert.throws(() => detect(old, changed), /Unsupported contract change/);
+  const newPath = JSON.parse(readFileSync(new URL('../fixtures/path-new.json', import.meta.url)));
+  newPath.paths['/v2/customers/{id}'].get.responses['200'].content['application/json'].schema.properties.tier.type = 'integer';
+  assert.throws(() => detect(old, newPath), /another unsupported contract change/);
+  const fieldOld = JSON.parse(readFileSync(new URL('../fixtures/field-old.json', import.meta.url)));
+  const fieldNew = JSON.parse(readFileSync(new URL('../fixtures/field-new.json', import.meta.url)));
+  fieldNew.paths['/v1/customers/{id}'].get.responses['200'].content['application/json'].schema.properties.tier.type = 'integer';
+  assert.throws(() => detect(fieldOld, fieldNew), /another unsupported contract change/);
+  const queryOld = JSON.parse(readFileSync(new URL('../fixtures/query-old.json', import.meta.url)));
+  const queryNew = JSON.parse(readFileSync(new URL('../fixtures/query-new.json', import.meta.url)));
+  queryNew.paths['/customers'].get.parameters[0].schema.maximum = 10;
+  assert.throws(() => detect(queryOld, queryNew), /another unsupported contract change/);
 });
 
 test('local proof executes all declared checks for supported fixtures', () => temporary((root) => {
@@ -104,6 +122,39 @@ function registration(root, overrides = {}) {
   writeFileSync(path, JSON.stringify(config));
   return path;
 }
+
+test('registered proof resolves conventional hidden config at repository root', () => temporary((root) => {
+  const original = registration(root);
+  const config = JSON.parse(readFileSync(original, 'utf8'));
+  config.proof = JSON.parse(readFileSync(new URL('../fixtures/registered-path-proof.json', import.meta.url))).proof;
+  writeFileSync(original, JSON.stringify(config));
+  mkdirSync(join(root, '.migratelens'));
+  const nested = join(root, '.migratelens', 'registration.json');
+  renameSync(original, nested);
+  const analysis = analyzeRegistered(nested);
+  assert.equal(analysis.usage[0].classification, 'confirmed');
+  const { folder, evidence } = proveRegistered(nested, join(root, 'proof'));
+  assert.equal(evidence.verdict, 'LOCAL_CHECKS_PASSED');
+  assert.equal(verifyRegistered(join(folder, 'manifest.json'), nested).fingerprint, evidence.fingerprint);
+  config.sourceFiles = ['../src/client.ts'];
+  writeFileSync(nested, JSON.stringify(config));
+  assert.throws(() => analyzeRegistered(nested), /outside admitted scope/);
+}));
+
+test('registered input byte limit rejects oversized files before proof artifacts', () => temporary((root) => {
+  const config = registration(root);
+  writeFileSync(join(root, 'src', 'client.ts'), 'x'.repeat(65_537));
+  assert.throws(() => analyzeRegistered(config), /byte budget/);
+  assert.throws(() => proveRegistered(config, join(root, 'proof')), /byte budget/);
+  assert.equal(readFileSync(config, 'utf8').length < 16_384, true);
+}));
+
+test('registered evidence revalidation rejects oversized manifest before parsing', () => temporary((root) => {
+  const config = new URL('../fixtures/registered-path-proof.json', import.meta.url).pathname;
+  const { folder } = proveRegistered(config, root);
+  writeFileSync(join(folder, 'manifest.json'), ' '.repeat(1_000_001));
+  assert.throws(() => verifyRegistered(join(folder, 'manifest.json'), config), /byte budget/);
+}));
 
 test('registered local scan binds exact files and classifies direct fetch without a patch claim', () => temporary((root) => {
   const config = registration(root);
@@ -229,4 +280,79 @@ test('registered proof rejects changed GET semantics and invalid local test vect
   current.proof.cases[0].response.tier = 123;
   writeFileSync(config, JSON.stringify(current));
   assert.throws(() => proveRegistered(config, join(root, 'output')), /does not match supported OpenAPI schema/);
+}));
+
+test('registered proof cannot pass when consumer returns expected value without reaching API', () => temporary((root) => {
+  const config = registration(root);
+  const current = JSON.parse(readFileSync(config, 'utf8'));
+  current.proof = JSON.parse(readFileSync(new URL('../fixtures/registered-path-proof.json', import.meta.url))).proof;
+  current.proof.cases.forEach(vector => { vector.expected = null; });
+  writeFileSync(config, JSON.stringify(current));
+  const sourcePath = join(root, 'src', 'client.ts');
+  const source = readFileSync(sourcePath, 'utf8');
+  writeFileSync(sourcePath, source.replace('  const response = await fetch(', '  if (false) await fetch(').replace('  if (response.status === 404) return null;', '  return null;\n  if (response.status === 404) return null;'));
+  const { evidence } = proveRegistered(config, join(root, 'output'));
+  assert.equal(evidence.verdict, 'VALIDATION_FAILED');
+  assert.equal(evidence.checks.find(check => check.id === 'BASELINE_OLD')?.outcome, 'FAIL');
+}));
+
+test('registered proof refuses known credential patterns before writing artifacts', () => temporary((root) => {
+  const config = registration(root);
+  const current = JSON.parse(readFileSync(config, 'utf8'));
+  current.proof = JSON.parse(readFileSync(new URL('../fixtures/registered-path-proof.json', import.meta.url))).proof;
+  writeFileSync(config, JSON.stringify(current));
+  const sourcePath = join(root, 'src', 'client.ts');
+  writeFileSync(sourcePath, readFileSync(sourcePath, 'utf8') + '\n// MIGRATELENS_SECRET_CANARY_TEST_VALUE\n');
+  assert.throws(() => proveRegistered(config, join(root, 'proof')), /contains synthetic secret canary/);
+}));
+
+test('registered export contains only revalidated metadata and rejects stale proof', () => temporary((root) => {
+  const config = new URL('../fixtures/registered-path-proof.json', import.meta.url).pathname;
+  const { folder } = proveRegistered(config, root);
+  const manifest = join(folder, 'manifest.json');
+  const summary = exportRegistered(manifest, config);
+  const json = JSON.stringify(summary);
+  assert.equal(summary.verdict, 'LOCAL_CHECKS_PASSED');
+  assert.equal(summary.checks.length, 6);
+  assert.doesNotMatch(json, /Ada Lovelace|Bob Stone|\/v1\/customers|client\.ts|source\.ts/);
+  writeFileSync(join(folder, 'candidate.ts'), 'tampered');
+  assert.throws(() => exportRegistered(manifest, config), /stale/);
+}));
+
+test('registered HTTP proof rejects wrong origin and method even with matching path', () => temporary((root) => {
+  const config = registration(root);
+  const current = JSON.parse(readFileSync(config, 'utf8'));
+  current.proof = JSON.parse(readFileSync(new URL('../fixtures/registered-path-proof.json', import.meta.url))).proof;
+  writeFileSync(config, JSON.stringify(current));
+  const sourcePath = join(root, 'src', 'client.ts');
+  const original = readFileSync(sourcePath, 'utf8');
+  for (const changed of [
+    original.replace('${base}/v1/customers/', "${'https://production.example'}/v1/customers/"),
+    original.replace('fetch(`${base}/v1/customers/${encodeURIComponent(id)}`)', 'fetch(`${base}/v1/customers/${encodeURIComponent(id)}`, { method: "POST" })'),
+  ]) {
+    writeFileSync(sourcePath, changed);
+    const { evidence } = proveRegistered(config, join(root, 'proof'));
+    assert.equal(evidence.verdict, 'VALIDATION_FAILED');
+    assert.equal(evidence.checks.find(check => check.id === 'BASELINE_OLD')?.outcome, 'FAIL');
+  }
+}));
+
+test('registered proof rejects imported consumer code before execution', () => temporary((root) => {
+  const config = registration(root);
+  const current = JSON.parse(readFileSync(config, 'utf8'));
+  current.proof = JSON.parse(readFileSync(new URL('../fixtures/registered-path-proof.json', import.meta.url))).proof;
+  writeFileSync(config, JSON.stringify(current));
+  const sourcePath = join(root, 'src', 'client.ts');
+  writeFileSync(sourcePath, "import { readFileSync } from 'node:fs';\n" + readFileSync(sourcePath, 'utf8'));
+  assert.throws(() => proveRegistered(config, join(root, 'proof')), /standalone source/);
+}));
+
+test('registered proof rejects executable top-level statements before import', () => temporary((root) => {
+  const config = registration(root);
+  const current = JSON.parse(readFileSync(config, 'utf8'));
+  current.proof = JSON.parse(readFileSync(new URL('../fixtures/registered-path-proof.json', import.meta.url))).proof;
+  writeFileSync(config, JSON.stringify(current));
+  const sourcePath = join(root, 'src', 'client.ts');
+  writeFileSync(sourcePath, readFileSync(sourcePath, 'utf8') + '\nthrow new Error("top-level executed");\n');
+  assert.throws(() => proveRegistered(config, join(root, 'proof')), /declaration-only module top level/);
 }));

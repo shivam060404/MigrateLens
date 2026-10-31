@@ -11,9 +11,9 @@
     },
     "candidate": "sha256:a66b98b4cdd260298a473f73b0b453025baabea85c9b05bc9467e9d6fbcd4e98",
     "patch": "sha256:ef6c1a6e9ad8bf75bb7df3aad3e681b0a348c522e90e3112b33277081951faee",
-    "testSuite": "sha256:1aadeddc06bcc58ab1198ead635e5ddacd2ce7aee9c186889cd9de2add15119a",
+    "testSuite": "sha256:10cc4b71672fa76550dc4e18cd0adbd78d48e0113efb201d42c8eb462c73e418",
     "policy": "sha256:80efe95d57101101d1b55f88c681c054d6f82183bb9960315103264f574d2588",
-    "implementation": "sha256:de4e6440910a74ee7022be418ff8e3eff1f2dd4976205c084b5ab3e6897db755",
+    "implementation": "sha256:bec4ea2a15721db8aee81d749904bd4c14e4b5ff6a966cdd9a1053dcd2c082be",
     "runner": "node:v22.23.1;typescript:5.9.3;caller-local-unattested"
   },
   "checks": [
@@ -52,7 +52,8 @@
     "Mapping and expected outputs are self-declared, not independently approved.",
     "Proof executes consumer source in the caller environment; it is not a sandbox.",
     "Local hashes do not authenticate CI origin or authorize publication.",
+    "Known credential patterns are rejected before artifact creation; this is not a complete secret scanner.",
     "Only one direct-fetch path migration with unchanged GET operation is covered."
   ],
-  "fingerprint": "96ebd7f52170361e2886b3ce309903b366889ea0b313b6594905d54a9474264b"
+  "fingerprint": "f0b4115538d4852ab4d1d5c7042f08b058ee80e79efedbf50696dbe1c97209de"
 }

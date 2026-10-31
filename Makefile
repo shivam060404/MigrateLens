@@ -4,7 +4,7 @@ export PYTHONPATH := $(CURDIR)/backend
 export UV_CACHE_DIR := $(CURDIR)/.local/uv-cache
 export NEXT_TELEMETRY_DISABLED := 1
 
-.PHONY: bootstrap dev dev-backend dev-frontend health schemas check-schemas check-locks lint format typecheck test test-unit test-integration test-security test-typescript test-oss test-e2e build build-oss build-backend build-frontend demo proof proof-registered seed-demo benchmark-smoke oss-ci verify-local ci migrate down
+.PHONY: bootstrap dev dev-backend dev-frontend health schemas check-schemas check-locks lint format typecheck test test-unit test-integration test-security test-typescript test-oss test-e2e build build-oss build-backend build-frontend demo proof proof-registered action-smoke-local oasdiff-install oasdiff-audit seed-demo benchmark-smoke oss-ci verify-local ci migrate down
 bootstrap:
 	$(PYTHON) scripts/bootstrap.py --venv "$(VENV)"
 	$(MAKE) check-locks check-schemas health VENV="$(VENV)"
@@ -69,7 +69,7 @@ test-e2e:
 build: build-oss build-backend build-frontend
 
 build-oss:
-	node node_modules/typescript/bin/tsc -p oss/tsconfig.json
+	node oss/node_modules/typescript/bin/tsc -p oss/tsconfig.json
 
 build-backend:
 	$(PYTHON) -m build --no-isolation --outdir .local/dist backend
@@ -81,7 +81,19 @@ proof: build-oss
 	node oss/dist/cli.js prove --fixture path --output artifacts/oss-proof
 
 proof-registered: build-oss
-	node oss/dist/cli.js prove --config oss/fixtures/registered-path-proof.json --output artifacts/registered-proof
+	node oss/dist/cli.js prove --config oss/fixtures/registered-path-proof.json --output artifacts/registered-proof --summary artifacts/evidence/registered.json
+
+action-smoke-local: build-oss
+	$(PYTHON) scripts/smoke_action_local.py
+
+oasdiff-install:
+	$(PYTHON) scripts/install_oasdiff.py --destination .local/bin/oasdiff
+
+oasdiff-audit:
+	@test -x .local/bin/oasdiff || { echo "Run make oasdiff-install first" >&2; exit 1; }
+	@mkdir -p artifacts/oasdiff
+	.local/bin/oasdiff diff --allow-external-refs=false --format json oss/fixtures/path-old.json oss/fixtures/path-new.json > artifacts/oasdiff/path-diff.json
+	$(PYTHON) -m json.tool artifacts/oasdiff/path-diff.json > /dev/null
 
 demo: proof
 
@@ -109,7 +121,10 @@ identity-init:
 identity-token:
 	$(PYTHON) scripts/local_identity.py token --subject "$(SUBJECT)"
 
-.PHONY: test-database
+.PHONY: test-database db-smoke
+db-smoke:
+	$(PYTHON) scripts/check_local_database.py
+
 test-database:
 	$(PYTHON) -m pytest -c backend/pyproject.toml backend/tests/database -q --junitxml=.local/test-results/database.xml
 

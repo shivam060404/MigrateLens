@@ -35,7 +35,7 @@ class ServiceDouble:
 
 
 @pytest.fixture
-def control(tmp_path):
+def control(tmp_path, monkeypatch):
     emulator = LocalIdentityEmulator(tmp_path / "keys", environment="test")
     public = emulator.initialize()
     settings = Settings(
@@ -44,6 +44,11 @@ def control(tmp_path):
         control_api_enabled=True,
         identity_public_key_path=str(public),
         database_url="postgresql+psycopg2://runtime:local-only@localhost:55432/test",
+    )
+    # This suite tests HTTP/identity using a service double, never a live database.
+    # Runtime admission is covered separately by unit and live database tests.
+    monkeypatch.setattr(
+        "src.infrastructure.persistence.database.Database.check_runtime_role", lambda self: None
     )
     app = create_app(settings)
     tenant = uuid4()

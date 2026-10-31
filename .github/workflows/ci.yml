@@ -17,6 +17,42 @@ env:
   ML_ENVIRONMENT: test
 
 jobs:
+  action-smoke:
+    name: composite Action fictional proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout without retained repository credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Execute local composite Action
+        id: proof
+        uses: ./
+        with:
+          config: oss/fixtures/registered-path-proof.json
+      - name: Check emitted metadata contract
+        shell: bash
+        env:
+          ML_ACTION_METADATA: ${{ steps.proof.outputs.metadata }}
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          const value = JSON.parse(readFileSync(process.env.ML_ACTION_METADATA, 'utf8'));
+          const ids = new Set(['BASELINE_OLD','REPRO_NEW','REPAIR_NEW','REGRESSION','STATIC','POLICY']);
+          if (value.schemaVersion !== 'registered-export-1' ||
+              value.verdict !== 'LOCAL_CHECKS_PASSED' ||
+              value.checks?.length !== ids.size ||
+              !value.checks.every(check => ids.delete(check.id) && check.outcome === 'PASS') ||
+              ids.size !== 0) throw new Error('Composite Action metadata failed contract check');
+          JS
+      - name: Retain Action metadata only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: action-smoke-metadata
+          path: ${{ steps.proof.outputs.metadata }}
+          if-no-files-found: error
+          retention-days: 7
   oss:
     name: standalone OSS proof
     runs-on: ubuntu-24.04
@@ -34,8 +70,19 @@ jobs:
         run: npm install --global pnpm@11.11.0 --ignore-scripts
       - name: Frozen OSS install
         run: pnpm install --frozen-lockfile --ignore-scripts --filter @migratelens/oss-core
+      - name: Install checksum pinned OpenAPI diff
+        run: make oasdiff-install PYTHON=python3
+      - name: Audit fictional contract diff with remote references disabled
+        run: make oasdiff-audit PYTHON=python3
       - name: OSS build, tests and local proof
         run: make build-oss test-oss proof proof-registered
+      - name: Retain registered metadata for provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: registered-metadata
+          path: artifacts/evidence/registered.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Retain fictional proof
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -43,9 +90,32 @@ jobs:
           name: oss-fictional-proof
           path: |
             artifacts/oss-proof/
-            artifacts/registered-proof/
+            artifacts/evidence/registered.json
+            artifacts/oasdiff/
           if-no-files-found: warn
           retention-days: 7
+  attest-metadata:
+    name: Attest metadata origin (explicit opt-in)
+    needs: oss
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.ML_ENABLE_ATTESTATIONS == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download only metadata from this workflow run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: registered-metadata
+          path: evidence
+      - name: Attest artifact origin
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: evidence/registered.json
+          create-storage-record: false
   baseline:
     name: baseline (${{ matrix.os }})
     strategy:

@@ -1,8 +1,8 @@
 # Registered local endpoint proof example
 
-Generated locally on 2026-10-27 from [the fictional registration](../../../oss/fixtures/registered-path-proof.json). The [path bundle](path/manifest.json) has verdict `LOCAL_CHECKS_PASSED` and fingerprint `96ebd7f52170361e2886b3ce309903b366889ea0b313b6594905d54a9474264b`.
+Generated locally on 2026-10-31 from [the fictional registration](../../../oss/fixtures/registered-path-proof.json). The [path bundle](path/manifest.json) has verdict `LOCAL_CHECKS_PASSED` and fingerprint `f0b4115538d4852ab4d1d5c7042f08b058ee80e79efedbf50696dbe1c97209de`.
 
-It executed baseline-old, reproduced-new, repair-new, regression, strict TypeScript and policy checks against a generated local mock. The declared response vectors passed the supported OpenAPI shape check. The mapping and expected outputs were self-declared in the registration; the bundle is unsigned and has no authenticated CI provenance. It is **not** a customer verification or approval for a draft PR.
+It executed baseline-old, reproduced-new, repair-new, regression, strict TypeScript and policy checks against a generated local mock. The mock requires one call to the declared endpoint; reproduction additionally records that the original code called the old route. The declared response vectors passed the supported OpenAPI shape check. Known credential patterns were rejected before artifact creation. The mapping and expected outputs were self-declared in the registration; the bundle is unsigned and has no authenticated CI provenance. It is **not** a customer verification or approval for a draft PR.
 
 ```sh
 make build-oss
